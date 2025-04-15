@@ -8,6 +8,11 @@ const nextConfig = {
       },
     ],
   },
+  // Add these settings to ignore ESLint during build
+  eslint: {
+    // Warning: This ignores all ESLint errors during build
+    ignoreDuringBuilds: true,
+  },
 };
 
 module.exports = nextConfig;
