@@ -61,9 +61,9 @@ function DraggableAsset({ asset, onEdit, onDelete }: {
       style={{ touchAction: 'none' }}
     >
       <div className="flex justify-between items-start mb-2">
-        <div>
+        <div className="max-w-[80%]">
           <h3 className="font-medium text-lg line-clamp-1">{asset.name}</h3>
-          <p className="text-xs text-muted-foreground">{asset.type}</p>
+          <p className="text-xs text-muted-foreground line-clamp-1">{asset.type}</p>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -94,16 +94,16 @@ function DraggableAsset({ asset, onEdit, onDelete }: {
       
       <div className="space-y-2">
         {asset.category && (
-          <div className="text-xs">
+          <div className="text-xs overflow-hidden">
             <span className="text-muted-foreground">Category: </span>
-            {asset.category}
+            <span className="inline-block line-clamp-1">{asset.category}</span>
           </div>
         )}
         
         {asset.tags && asset.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1">
+          <div className="flex flex-wrap gap-1 mt-1 max-h-[40px] overflow-hidden">
             {asset.tags.map((tag, i) => (
-              <span key={i} className="text-xs bg-muted px-2 py-0.5 rounded">{tag}</span>
+              <span key={i} className="text-xs bg-muted px-2 py-0.5 rounded truncate max-w-[100px]">{tag}</span>
             ))}
           </div>
         )}
@@ -598,120 +598,126 @@ export default function AssetsPage() {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="w-full h-full p-6 bg-background">
-        {/* Header with path and actions */}
-        <div className="mb-6">
-          <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
-            <h1 className="text-2xl font-bold">Assets</h1>
-            <div className="flex gap-2">
-              <Button onClick={() => setShowAddAssetDialog(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                New Asset
-              </Button>
-              <Button variant="outline" onClick={() => setShowAddFolderDialog(true)}>
-                <FolderIcon className="mr-2 h-4 w-4" />
-                New Folder
-              </Button>
-            </div>
-          </div>
-          
-          {/* Folder breadcrumb navigation */}
-          <div className="flex items-center gap-1 text-sm mb-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              className={`h-8 ${!currentFolder ? 'font-medium' : ''}`}
-              onClick={navigateToRoot}
-            >
-              Root
-            </Button>
-            
-            {folderPath.map((folder, index) => (
-              <React.Fragment key={folder.id}>
-                <span className="text-muted-foreground">/</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={`h-8 ${index === folderPath.length - 1 ? 'font-medium' : ''}`}
-                  onClick={() => navigateToFolder(folder.id)}
-                >
-                  {folder.name}
-                </Button>
-              </React.Fragment>
-            ))}
-          </div>
-          
-          {/* Back button when in a folder */}
-          {currentFolder && (
-            <Button variant="outline" size="sm" onClick={navigateUp} className="mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2"><polyline points="15 18 9 12 15 6"></polyline></svg>
-              Back to {folderPath.length > 1 ? folderPath[folderPath.length - 2].name : "Root"}
-            </Button>
-          )}
-        </div>
-        
-        {/* Root drop area (only show when in a subfolder) */}
-        <RootDropArea 
-          onDrop={(itemId, itemType) => handleDrop(itemId, itemType)}
-          isActive={!!currentFolder}
-        />
-        
-        {/* Content grid with folders and assets */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {/* Loading indicators */}
-          {loading && Array(3).fill(0).map((_, i) => (
-            <div key={`skeleton-${i}`} className="rounded-lg border p-4 animate-pulse">
-              <div className="h-7 w-1/2 bg-muted rounded mb-2"></div>
-              <div className="h-4 w-3/4 bg-muted rounded mb-3"></div>
-              <div className="h-4 w-1/3 bg-muted rounded"></div>
-            </div>
-          ))}
-          
-          {/* Empty state */}
-          {!loading && folders.length === 0 && assets.length === 0 && (
-            <div className="col-span-full flex flex-col items-center justify-center py-12 text-center">
-              <FolderIcon className="h-12 w-12 text-muted-foreground/50 mb-4" />
-              <h3 className="text-lg font-medium mb-1">No items here</h3>
-              <p className="text-muted-foreground mb-4">
-                {currentFolder 
-                  ? `This folder is empty. Add assets or folders to get started.`
-                  : `You don't have any assets or folders yet. Create some to get started.`
-                }
-              </p>
-              <div className="flex gap-2 mt-2">
-                <Button size="sm" onClick={() => setShowAddAssetDialog(true)}>
-                  <Plus className="h-4 w-4 mr-1" />
+      <div className="flex flex-col h-full overflow-hidden">
+        {/* Fixed header section */}
+        <div className="w-full p-6 bg-background flex-shrink-0">
+          {/* Header with path and actions */}
+          <div className="mb-6">
+            <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
+              <h1 className="text-2xl font-bold">Assets</h1>
+              <div className="flex gap-2">
+                <Button onClick={() => setShowAddAssetDialog(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
                   New Asset
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => setShowAddFolderDialog(true)}>
-                  <FolderIcon className="h-4 w-4 mr-1" />
+                <Button variant="outline" onClick={() => setShowAddFolderDialog(true)}>
+                  <FolderIcon className="mr-2 h-4 w-4" />
                   New Folder
                 </Button>
               </div>
             </div>
-          )}
+            
+            {/* Folder breadcrumb navigation */}
+            <div className="flex items-center gap-1 text-sm mb-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`h-8 ${!currentFolder ? 'font-medium' : ''}`}
+                onClick={navigateToRoot}
+              >
+                Root
+              </Button>
+              
+              {folderPath.map((folder, index) => (
+                <React.Fragment key={folder.id}>
+                  <span className="text-muted-foreground">/</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={`h-8 ${index === folderPath.length - 1 ? 'font-medium' : ''}`}
+                    onClick={() => navigateToFolder(folder.id)}
+                  >
+                    {folder.name}
+                  </Button>
+                </React.Fragment>
+              ))}
+            </div>
+            
+            {/* Back button when in a folder */}
+            {currentFolder && (
+              <Button variant="outline" size="sm" onClick={navigateUp} className="mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                Back to {folderPath.length > 1 ? folderPath[folderPath.length - 2].name : "Root"}
+              </Button>
+            )}
+          </div>
+        </div>
+        
+        {/* Scrollable content section */}
+        <div className="flex-grow overflow-y-auto p-6 pt-0">
+          {/* Root drop area (only show when in a subfolder) */}
+          <RootDropArea 
+            onDrop={(itemId, itemType) => handleDrop(itemId, itemType)}
+            isActive={!!currentFolder}
+          />
           
-          {/* Folders */}
-          {!loading && folders.map(folder => (
-            <DraggableFolderCard
-              key={folder.id}
-              folder={folder}
-              onNavigate={navigateToFolder}
-              onEdit={prepareEditFolder}
-              onDelete={(id) => prepareDelete(id, ItemTypes.FOLDER, folder.name)}
-              onDrop={(itemId, itemType, targetId) => handleDrop(itemId, itemType, targetId)}
-            />
-          ))}
-          
-          {/* Assets */}
-          {!loading && assets.map(asset => (
-            <DraggableAsset
-              key={asset.id}
-              asset={asset}
-              onEdit={prepareEditAsset}
-              onDelete={(id) => prepareDelete(id, ItemTypes.ASSET, asset.name)}
-            />
-          ))}
+          {/* Content grid with folders and assets */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {/* Loading indicators */}
+            {loading && Array(3).fill(0).map((_, i) => (
+              <div key={`skeleton-${i}`} className="rounded-lg border p-4 animate-pulse">
+                <div className="h-7 w-1/2 bg-muted rounded mb-2"></div>
+                <div className="h-4 w-3/4 bg-muted rounded mb-3"></div>
+                <div className="h-4 w-1/3 bg-muted rounded"></div>
+              </div>
+            ))}
+            
+            {/* Empty state */}
+            {!loading && folders.length === 0 && assets.length === 0 && (
+              <div className="col-span-full flex flex-col items-center justify-center py-12 text-center">
+                <FolderIcon className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                <h3 className="text-lg font-medium mb-1">No items here</h3>
+                <p className="text-muted-foreground mb-4">
+                  {currentFolder 
+                    ? `This folder is empty. Add assets or folders to get started.`
+                    : `You don't have any assets or folders yet. Create some to get started.`
+                  }
+                </p>
+                <div className="flex gap-2 mt-2">
+                  <Button size="sm" onClick={() => setShowAddAssetDialog(true)}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    New Asset
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setShowAddFolderDialog(true)}>
+                    <FolderIcon className="h-4 w-4 mr-1" />
+                    New Folder
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {/* Folders */}
+            {!loading && folders.map(folder => (
+              <DraggableFolderCard
+                key={folder.id}
+                folder={folder}
+                onNavigate={navigateToFolder}
+                onEdit={prepareEditFolder}
+                onDelete={(id) => prepareDelete(id, ItemTypes.FOLDER, folder.name)}
+                onDrop={(itemId, itemType, targetId) => handleDrop(itemId, itemType, targetId)}
+              />
+            ))}
+            
+            {/* Assets */}
+            {!loading && assets.map(asset => (
+              <DraggableAsset
+                key={asset.id}
+                asset={asset}
+                onEdit={prepareEditAsset}
+                onDelete={(id) => prepareDelete(id, ItemTypes.ASSET, asset.name)}
+              />
+            ))}
+          </div>
         </div>
         
         {/* Create Asset Dialog */}

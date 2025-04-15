@@ -396,11 +396,11 @@ export function DatabasePageContent() {
         <h1 className="text-2xl font-bold">Product Database</h1>
         
         <div className="flex gap-2">
-          <div className="relative max-w-sm">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <div className="relative max-w-lg w-full mx-auto">
+            <Search className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
             <Input
               placeholder="Search products..."
-              className="pl-8 w-[200px] md:w-[300px]"
+              className="pl-10 w-[300px] md:w-[450px] h-12 text-base"
               value={searchFilters.keyword || ""}
               onChange={(e) => handleSearch(e.target.value)}
             />
