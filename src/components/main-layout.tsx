@@ -1,5 +1,5 @@
 "use client"
-
+import { Logo } from './logo'
 import * as React from "react"
 import { Database, FileText, MessageSquare, Plus } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
@@ -27,15 +27,8 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { Separator } from "@/components/ui/separator"
-
-// Sample user data
-const userData = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
-}
+import { userService } from "@/lib/database"
+import { DatabaseUser } from "@/types/database"
 
 // Main navigation items
 const mainNavItems = [
@@ -67,12 +60,39 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
   const [activeItem, setActiveItem] = React.useState(
     mainNavItems.find((item) => pathname.startsWith(item.path)) || mainNavItems[0],
   )
+  
+  // State for current user
+  const [currentUser, setCurrentUser] = React.useState<DatabaseUser | null>(null)
+  
+  // Fetch current user on component mount
+  React.useEffect(() => {
+    fetchCurrentUser()
+  }, [])
+  
+  // Function to fetch the current user - can be called after profile updates
+  const fetchCurrentUser = async () => {
+    try {
+      const user = await userService.getCurrentUser()
+      setCurrentUser(user)
+    } catch (error) {
+      console.error("Error fetching current user:", error)
+    }
+  }
+  
+  // Create a user object for NavUser component
+  const userData = {
+    user: {
+      name: currentUser?.name || "User",
+      email: currentUser?.email || "",
+      avatar: currentUser?.avatar_url || "/avatars/shadcn.jpg",
+    }
+  }
 
   // Get the current page title for the breadcrumb
   const getPageTitle = () => {
     if (pathname === "/") return "Dashboard"
     const item = mainNavItems.find((item) => pathname.startsWith(item.path))
-    return item ? item.title : "Dashboard"
+    return item ? item.title : ""
   }
 
   return (
@@ -84,27 +104,15 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton size="lg" asChild className="md:h-8 md:p-0">
-                  <a href="/">
-                    <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="size-4"
-                      >
-                        <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                        <polyline points="9 22 9 12 15 12 15 22" />
-                      </svg>
-                    </div>
-                    <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold">Novation</span>
-                      <span className="truncate text-xs text-muted-foreground">Dashboard</span>
-                    </div>
-                  </a>
+                <a href="/" className="flex justify-center items-center">
+  <div className="flex w-full justify-center items-center gap-2 lg:w-auto">
+    <Logo className="h-6 w-6" />
+    <div className="grid flex-1 text-center text-sm leading-tight">
+      <span className="truncate font-semibold">Novation</span>
+      <span className="truncate text-xs text-muted-foreground"></span>
+    </div>
+  </div>
+</a>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -137,7 +145,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
             </SidebarGroup>
           </SidebarContent>
           <SidebarFooter>
-            <NavUser user={userData.user} />
+            <NavUser user={userData.user} onProfileUpdate={fetchCurrentUser} />
           </SidebarFooter>
         </Sidebar>
 

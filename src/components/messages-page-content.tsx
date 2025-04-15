@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Search, Mail, CheckCircle, Trash } from "lucide-react"
+import { Search, Mail, CheckCircle, Trash, Maximize2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -43,6 +43,8 @@ export function MessagesPageContent() {
   // State for dialogs
   const [showComposeDialog, setShowComposeDialog] = React.useState(false)
   const [showViewDialog, setShowViewDialog] = React.useState(false)
+  const [showExpandDialog, setShowExpandDialog] = React.useState(false)
+  const [expandedContent, setExpandedContent] = React.useState<{title: string, content: string} | null>(null)
   
   // State for loading
   const [loading, setLoading] = React.useState(false)
@@ -169,6 +171,13 @@ export function MessagesPageContent() {
     setShowViewDialog(false)
     setShowComposeDialog(true)
   }
+
+  // Handle expand content
+  const handleExpandContent = (title: string, content: string, e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent the card click (view message) from firing
+    setExpandedContent({ title, content })
+    setShowExpandDialog(true)
+  }
   
   return (
     <div className="p-4">
@@ -241,9 +250,20 @@ export function MessagesPageContent() {
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-sm line-clamp-2">
-                {message.content}
-              </p>
+              <div className="flex items-start gap-1">
+                <p className="text-sm line-clamp-2">
+                  {message.content}
+                </p>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-5 w-5 mt-0.5 ml-1" 
+                  onClick={(e) => handleExpandContent(message.subject, message.content, e)}
+                >
+                  <Maximize2 className="h-3 w-3" />
+                  <span className="sr-only">Expand</span>
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -383,6 +403,25 @@ export function MessagesPageContent() {
                 Reply
               </Button>
             </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Expand Content Dialog */}
+      <Dialog open={showExpandDialog} onOpenChange={setShowExpandDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>{expandedContent?.title}</DialogTitle>
+          </DialogHeader>
+          
+          <div className="mt-2 whitespace-pre-wrap">
+            {expandedContent?.content}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowExpandDialog(false)}>
+              Close
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

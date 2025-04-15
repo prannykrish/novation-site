@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Search, Filter, FileText, FileImage, PresentationIcon } from "lucide-react"
+import { Search, Filter, FileText, FileImage, PresentationIcon, Maximize2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -44,6 +44,8 @@ export default function LookupPage() {
   const [loading, setLoading] = React.useState(false)
   
   // State for search filters
+  const [isClient, setIsClient] = React.useState(false)
+  const [initialLoadComplete, setInitialLoadComplete] = React.useState(false)
   const [searchFilters, setSearchFilters] = React.useState<SearchFilters>({
     keyword: "",
     categories: [],
@@ -54,13 +56,67 @@ export default function LookupPage() {
     isPublicOnly: false
   })
   
-  // Dialog state
-  const [showFilterDialog, setShowFilterDialog] = React.useState(false)
+  // Load saved filters from localStorage only on client-side
+  React.useEffect(() => {
+    setIsClient(true)
+    // Try to load saved filters from localStorage after component mounts (client-side only)
+    const savedFilters = localStorage.getItem('assetLookupFilters')
+    if (savedFilters) {
+      try {
+        const parsedFilters = JSON.parse(savedFilters)
+        
+        // Important: Set the filters first before loading data
+        setSearchFilters(parsedFilters)
+        
+        // Create a fresh service filters object from the parsed filters
+        const serviceFilters: any = {}
+        
+        if (parsedFilters.keyword) serviceFilters.keyword = parsedFilters.keyword
+        if (parsedFilters.categories?.length) serviceFilters.category = parsedFilters.categories[0]
+        if (parsedFilters.tags?.length) serviceFilters.tags = parsedFilters.tags
+        if (parsedFilters.types?.length) serviceFilters.type = parsedFilters.types[0]
+        if (parsedFilters.startDate) serviceFilters.startDate = parsedFilters.startDate
+        if (parsedFilters.endDate) serviceFilters.endDate = parsedFilters.endDate
+        parsedFilters.isPublicOnly = (parsedFilters.isPublicOnly === 'true');
+        // Load assets directly with the filters - ensure isPublicOnly is correctly applied
+        setLoading(true)
+        assetService.getAssets(serviceFilters)
+          .then(assetData => {
+            setAssets(assetData)
+            setFilteredAssets(assetData)
+            setInitialLoadComplete(true)
+            setLoading(false)
+          })
+          .catch(error => {
+            console.error("Error loading assets:", error)
+            setLoading(false)
+          })
+      } catch (e) {
+        console.error('Error parsing saved filters:', e)
+        // If there's an error, mark load as complete anyway
+        setInitialLoadComplete(true)
+      }
+    } else {
+      // If no saved filters, mark load as complete
+      setInitialLoadComplete(true)
+    }
+  }, [])
   
-  // Initial data load
+  // Save filters to localStorage whenever they change
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('assetLookupFilters', JSON.stringify(searchFilters))
+    }
+  }, [searchFilters])
+  
+  // Dialog states
+  const [showFilterDialog, setShowFilterDialog] = React.useState(false)
+  const [showExpandDialog, setShowExpandDialog] = React.useState(false)
+  const [expandedAsset, setExpandedAsset] = React.useState<Asset | null>(null)
+  
+  // Initial data load for categories only
   React.useEffect(() => {
     async function loadInitialData() {
-      setLoading(true)
       try {
         // Load all categories
         const categoryData = await categoryService.getCategories()
@@ -68,17 +124,22 @@ export default function LookupPage() {
           setCategories(categoryData)
         }
         
-        // Load all assets (no folder filtering)
-        await loadAssets()
+        // Only load assets if localStorage load hasn't happened yet
+        if (!isClient && !initialLoadComplete) {
+          setLoading(true)
+          await loadAssets()
+          setInitialLoadComplete(true)
+          setLoading(false)
+        }
       } catch (error) {
         console.error("Error loading initial data:", error)
-      } finally {
         setLoading(false)
+        setInitialLoadComplete(true)
       }
     }
     
     loadInitialData()
-  }, [])
+  }, [isClient, initialLoadComplete]) // Add initialLoadComplete dependency
   
   // Load assets with optional filters
   const loadAssets = async () => {
@@ -93,7 +154,7 @@ export default function LookupPage() {
       if (searchFilters.types?.length) serviceFilters.type = searchFilters.types[0] // API only supports one type
       if (searchFilters.startDate) serviceFilters.startDate = searchFilters.startDate
       if (searchFilters.endDate) serviceFilters.endDate = searchFilters.endDate
-      if (searchFilters.isPublicOnly) serviceFilters.isPublicOnly = searchFilters.isPublicOnly
+      if (searchFilters.isPublicOnly === true) serviceFilters.isPublicOnly = true
       
       // Get all assets (no folder filtering)
       const assetData = await assetService.getAssets(serviceFilters)
@@ -167,11 +228,44 @@ export default function LookupPage() {
   }
 
   // Toggle between public and all assets
-  const togglePublicOnly = (showPublic: boolean) => {
-    setSearchFilters(prev => ({ ...prev, isPublicOnly: showPublic }))
-    setTimeout(() => {
-      loadAssets()
-    }, 0)
+  const togglePublicOnly = (value: string) => {
+    const showPublic = value === "public"
+    
+    // Build fresh filters first
+    const updatedFilters = { ...searchFilters, isPublicOnly: showPublic }
+    
+    // Update state
+    setSearchFilters(updatedFilters)
+  
+    // Construct serviceFilters from updatedFilters (not the stale searchFilters)
+    const serviceFilters: any = {}
+    if (updatedFilters.keyword) serviceFilters.keyword = updatedFilters.keyword
+    if (updatedFilters.categories?.length) serviceFilters.category = updatedFilters.categories[0]
+    if (updatedFilters.tags?.length) serviceFilters.tags = updatedFilters.tags
+    if (updatedFilters.types?.length) serviceFilters.type = updatedFilters.types[0]
+    if (updatedFilters.startDate) serviceFilters.startDate = updatedFilters.startDate
+    if (updatedFilters.endDate) serviceFilters.endDate = updatedFilters.endDate
+    if (updatedFilters.isPublicOnly === true) serviceFilters.isPublicOnly = true
+  
+    // Load assets with the updated filters
+    setLoading(true)
+    assetService.getAssets(serviceFilters)
+      .then(assetData => {
+        setAssets(assetData)
+        setFilteredAssets(assetData)
+        setLoading(false)
+      })
+      .catch(error => {
+        console.error("Error loading assets:", error)
+        setLoading(false)
+      })
+  }
+
+  // Handle expand view
+  const handleExpandAsset = (asset: Asset, e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent any parent onClick handlers from firing
+    setExpandedAsset(asset)
+    setShowExpandDialog(true)
   }
   
   return (
@@ -192,16 +286,21 @@ export default function LookupPage() {
           </div>
           
           <div className="flex items-center justify-center w-full">
-            <Tabs 
-              defaultValue={searchFilters.isPublicOnly ? "public" : "all"}
-              className="w-[250px]"
-              onValueChange={(value) => togglePublicOnly(value === "public")}
-            >
-              <TabsList className="grid w-full grid-cols-2 rounded-xl">
-                <TabsTrigger value="all" className="rounded-lg">All Assets</TabsTrigger>
-                <TabsTrigger value="public" className="rounded-lg">Public Only</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            {isClient ? (
+              <Tabs 
+                defaultValue="all"
+                className="w-[250px]"
+                value={searchFilters.isPublicOnly ? "public" : "all"}
+                onValueChange={togglePublicOnly}
+              >
+                <TabsList className="grid w-full grid-cols-2 rounded-xl">
+                  <TabsTrigger value="all" className="rounded-lg">All Assets</TabsTrigger>
+                  <TabsTrigger value="public" className="rounded-lg">Public Only</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            ) : (
+              <div className="w-[250px] h-10 bg-muted rounded-lg animate-pulse" />
+            )}
             
             <Button variant="outline" onClick={() => setShowFilterDialog(true)} className="ml-4">
               <Filter className="mr-2 h-4 w-4" />
@@ -245,7 +344,20 @@ export default function LookupPage() {
                 <div className="flex items-center gap-2">
                   {getAssetIcon(asset.type)}
                   <div className="max-w-[80%]">
-                    <CardTitle className="text-base truncate">{asset.name}</CardTitle>
+                    <div className="flex items-center gap-1 group">
+                      <CardTitle className="text-base truncate">{asset.name}</CardTitle>
+                      {asset.name.length > 20 && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-5 w-5 opacity-30 group-hover:opacity-100 transition-opacity" 
+                          onClick={(e) => handleExpandAsset(asset, e)}
+                        >
+                          <Maximize2 className="h-3 w-3" />
+                          <span className="sr-only">Expand</span>
+                        </Button>
+                      )}
+                    </div>
                     <CardDescription className="text-xs truncate">{asset.type}</CardDescription>
                   </div>
                 </div>
@@ -254,9 +366,20 @@ export default function LookupPage() {
             
             <CardContent className="pb-2">
               {asset.description && (
-                <p className="text-sm text-muted-foreground mt-1 mb-2 line-clamp-2">
-                  {asset.description}
-                </p>
+                <div className="flex items-start gap-1 group">
+                  <p className="text-sm text-muted-foreground mt-1 mb-2 line-clamp-2">
+                    {asset.description}
+                  </p>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-5 w-5 mt-1 opacity-30 group-hover:opacity-100 transition-opacity" 
+                    onClick={(e) => handleExpandAsset(asset, e)}
+                  >
+                    <Maximize2 className="h-3 w-3" />
+                    <span className="sr-only">Expand</span>
+                  </Button>
+                </div>
               )}
               
               <div className="space-y-2">
@@ -418,6 +541,88 @@ export default function LookupPage() {
             </Button>
             <Button onClick={applyFilters}>
               Apply Filters
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Expand Content Dialog */}
+      <Dialog open={showExpandDialog} onOpenChange={setShowExpandDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>{expandedAsset?.name}</DialogTitle>
+            <DialogDescription>{expandedAsset?.type}</DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            {expandedAsset?.description && (
+              <div className="mb-4">
+                <h3 className="text-sm font-medium mb-1">Description:</h3>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {expandedAsset.description}
+                </p>
+              </div>
+            )}
+            
+            {expandedAsset?.category && (
+              <div className="mb-4">
+                <h3 className="text-sm font-medium mb-1">Category:</h3>
+                <p className="text-sm text-muted-foreground">
+                  {categories.find(c => c.id === expandedAsset.category)?.name || expandedAsset.category}
+                </p>
+              </div>
+            )}
+            
+            {expandedAsset?.tags && expandedAsset.tags.length > 0 && (
+              <div className="mb-4">
+                <h3 className="text-sm font-medium mb-1">Tags:</h3>
+                <div className="flex flex-wrap gap-1">
+                  {expandedAsset.tags.map((tag, i) => (
+                    <Badge key={i} variant="outline">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <h3 className="font-medium mb-1">Visibility:</h3>
+                <p className={expandedAsset?.isPublic ? "text-green-600 dark:text-green-400" : "text-amber-600 dark:text-amber-400"}>
+                  {expandedAsset?.isPublic ? "Public" : "Private"}
+                </p>
+              </div>
+              
+              <div>
+                <h3 className="font-medium mb-1">Created:</h3>
+                <p className="text-muted-foreground">
+                  {expandedAsset && new Date(expandedAsset.createdAt).toLocaleDateString()}
+                </p>
+              </div>
+              
+              {(expandedAsset?.usageStartDate || expandedAsset?.usageEndDate) && (
+                <div className="col-span-2">
+                  <h3 className="font-medium mb-1">Usage Period:</h3>
+                  <p className="text-muted-foreground">
+                    {expandedAsset?.usageStartDate || 'Any time'} 
+                    {expandedAsset?.usageEndDate ? ` to ${expandedAsset.usageEndDate}` : ''}
+                  </p>
+                </div>
+              )}
+              
+              <div className="col-span-2">
+                <h3 className="font-medium mb-1">Created By:</h3>
+                <p className="text-muted-foreground">
+                  {expandedAsset?.userName || expandedAsset?.userEmail || 'Unknown'}
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowExpandDialog(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

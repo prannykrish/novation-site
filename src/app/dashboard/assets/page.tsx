@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Folder as FolderIcon, Plus, Edit, Trash2 } from "lucide-react"
+import { Folder as FolderIcon, Plus, Edit, Trash2, Maximize2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -127,15 +127,19 @@ function DraggableFolderCard({
   onNavigate,
   onEdit,
   onDelete,
-  onDrop
+  onDrop,
+  onExpand
 }: { 
   folder: Folder, 
   onNavigate: (folderId: string) => void,
   onEdit: (folder: Folder) => void,
   onDelete: (folderId: string) => void,
-  onDrop: (itemId: string, itemType: string, targetFolderId: string) => void
+  onDrop: (itemId: string, itemType: string, targetFolderId: string) => void,
+  onExpand: (folder: Folder, e: React.MouseEvent) => void
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   
   // Make the folder draggable
   const [{ isDragging }, drag] = useDrag({
@@ -161,6 +165,17 @@ function DraggableFolderCard({
     }),
   });
   
+  // Toggle folder expanded state
+  const toggleExpand = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsExpanded(!isExpanded);
+    
+    // If expanding the folder, also call onExpand for additional information
+    if (!isExpanded) {
+      onExpand(folder, e);
+    }
+  };
+  
   // Combine drag and drop refs
   drag(drop(ref));
   
@@ -170,17 +185,43 @@ function DraggableFolderCard({
       className={`rounded-lg border bg-card p-4 shadow-sm transition-all cursor-pointer
         ${isDragging ? 'opacity-50 ring-2 ring-primary ring-offset-2' : ''}
         ${isOver && canDrop ? 'ring-2 ring-primary ring-offset-2 bg-primary/5' : ''}
-        hover:shadow-md hover:bg-muted/30`}
+        ${isHovered ? 'shadow-md bg-muted/30' : ''}`}
       onClick={() => onNavigate(folder.id)}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       style={{ touchAction: 'none' }}
     >
       <div className="flex justify-between items-start">
         <div className="flex items-center">
           <FolderIcon className="h-8 w-8 text-primary mr-2" />
           <div>
-            <h3 className="font-medium text-lg line-clamp-1">{folder.name}</h3>
+            <div className="flex items-center gap-1 group">
+              <h3 className="font-medium text-lg line-clamp-1">{folder.name}</h3>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className={`h-5 w-5 ${isHovered ? 'opacity-100' : 'opacity-30'} transition-opacity`} 
+                onClick={toggleExpand}
+              >
+                <Maximize2 className="h-3 w-3" />
+                <span className="sr-only">{isExpanded ? 'Collapse' : 'Expand'}</span>
+              </Button>
+            </div>
             {folder.description && (
-              <p className="text-xs text-muted-foreground line-clamp-1">{folder.description}</p>
+              <div className={`flex items-center gap-1 group ${isExpanded ? '' : 'line-clamp-1'}`}>
+                <p className="text-xs text-muted-foreground">{folder.description}</p>
+                {folder.description.length > 30 && !isExpanded && (
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className={`h-4 w-4 ${isHovered ? 'opacity-100' : 'opacity-30'} transition-opacity`} 
+                    onClick={toggleExpand}
+                  >
+                    <Maximize2 className="h-2 w-2" />
+                    <span className="sr-only">Expand</span>
+                  </Button>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -193,6 +234,13 @@ function DraggableFolderCard({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={(e) => {
+              e.stopPropagation();
+              toggleExpand(e);
+            }}>
+              <Maximize2 className="mr-2 h-4 w-4" />
+              {isExpanded ? 'Collapse' : 'Expand'}
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={(e) => {
               e.stopPropagation();
               onEdit(folder);
@@ -213,6 +261,13 @@ function DraggableFolderCard({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+      
+      {/* Display expanded description when toggled */}
+      {isExpanded && folder.description && (
+        <div className="mt-2 pt-2 border-t">
+          <p className="text-sm">{folder.description}</p>
+        </div>
+      )}
       
       {isOver && canDrop && (
         <div className="absolute inset-0 bg-primary/10 rounded-lg border-2 border-primary border-dashed pointer-events-none" />
@@ -274,6 +329,8 @@ export default function AssetsPage() {
   const [showEditAssetDialog, setShowEditAssetDialog] = useState(false);
   const [showEditFolderDialog, setShowEditFolderDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showExpandDialog, setShowExpandDialog] = useState(false);
+  const [expandedFolder, setExpandedFolder] = useState<Folder | null>(null);
   
   // Form states
   const [newAsset, setNewAsset] = useState({
@@ -596,6 +653,13 @@ export default function AssetsPage() {
     setShowEditFolderDialog(true);
   };
 
+  // Handle expand folder
+  const handleExpandFolder = (folder: Folder, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent navigation to the folder
+    setExpandedFolder(folder);
+    setShowExpandDialog(true);
+  };
+
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="flex flex-col h-full overflow-hidden">
@@ -705,6 +769,7 @@ export default function AssetsPage() {
                 onEdit={prepareEditFolder}
                 onDelete={(id) => prepareDelete(id, ItemTypes.FOLDER, folder.name)}
                 onDrop={(itemId, itemType, targetId) => handleDrop(itemId, itemType, targetId)}
+                onExpand={handleExpandFolder}
               />
             ))}
             
@@ -1073,6 +1138,22 @@ export default function AssetsPage() {
               <Button variant="destructive" onClick={handleDelete} disabled={loading}>
                 {loading ? "Deleting..." : "Delete"}
               </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Expand Folder Dialog */}
+        <Dialog open={showExpandDialog} onOpenChange={setShowExpandDialog}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Folder Details</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <p><strong>Name:</strong> {expandedFolder?.name}</p>
+              <p><strong>Description:</strong> {expandedFolder?.description || "No description provided."}</p>
+            </div>
+            <DialogFooter>
+              <Button onClick={() => setShowExpandDialog(false)}>Close</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
