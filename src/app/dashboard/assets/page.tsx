@@ -369,7 +369,7 @@ export default function AssetsPage() {
       
       // Load assets in current location
       const assetData = await assetService.getAssets({ 
-        folderId: currentFolder?.id || null
+        folderId: currentFolder?.id || undefined
       });
       
       // Filter the assets to ensure only those that belong to the current folder are shown
@@ -449,7 +449,7 @@ export default function AssetsPage() {
       } else if (itemType === ItemTypes.FOLDER) {
         // Move folder to target folder (or root if targetFolderId is undefined)
         await folderService.updateFolder(itemId, {
-          parentId: targetFolderId || null
+          parentId: targetFolderId || undefined
         });
       }
       // Reload current folder content
