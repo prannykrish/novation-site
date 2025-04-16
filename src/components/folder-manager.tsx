@@ -40,7 +40,7 @@ const ItemType = {
 interface FolderManagerProps {
   onSelectFolder: (folderId: string | null) => void;
   selectedFolderId: string | null;
-  onDropAsset: (assetId: string, folderId: string | null) => void;
+  onDropAsset?: (asset: unknown) => void;
 }
 
 function FolderDrop({ folder, onDrop, children }: { folder: FolderType; onDrop: (folderId: string) => void; children: React.ReactNode }) {
@@ -355,7 +355,7 @@ export function FolderManager({ onSelectFolder, selectedFolderId, onDropAsset }:
             ))}
 
             {folders.map((folder) => (
-              <FolderDrop key={folder.id} folder={folder} onDrop={(folderId) => onDropAsset(folderId, folder.id)}>
+              <FolderDrop key={folder.id} folder={folder} onDrop={(folderId) => onDropAsset && onDropAsset(folderId)}>
               {folder.name}
             </FolderDrop>
             ))}

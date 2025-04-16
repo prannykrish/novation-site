@@ -140,7 +140,7 @@ export function DatabasePageContent() {
     setLoading(true)
     try {
       // Load products filtered by folder if applicable
-      const productData = await productService.getProducts({ folderId: selectedFolderId })
+      const productData = await productService.getProducts({ folderId: selectedFolderId || undefined })
       setProducts(productData)
       setFilteredProducts(productData)
     } catch (error) {
@@ -290,7 +290,7 @@ export function DatabasePageContent() {
       // Check if a product with the same name exists
       const existingProductCheck = await productService.checkProductExists(newProduct.name)
       if (existingProductCheck) {
-        setExistingProducts(existingProductCheck)
+        handleExistingProductCheck(existingProductCheck)
         setShowNameWarning(true)
         return
       }
@@ -389,6 +389,15 @@ export function DatabasePageContent() {
     })
     setShowSendMessageDialog(true)
   }
+
+  function handleExistingProductCheck(existingProductCheck: any[]) {
+    setExistingProducts(existingProductCheck.map((p) => ({
+      ...p,
+      category: p.category ?? '',
+      isPublic: p.isPublic ?? false,
+      createdAt: p.createdAt ?? new Date().toISOString(),
+    })));
+  }
   
   return (
     <div className="p-4">
@@ -422,7 +431,11 @@ export function DatabasePageContent() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {/* Folder section */}
         <div className="md:col-span-1">
-          <FolderManager onSelectFolder={handleFolderSelect} selectedFolderId={selectedFolderId} />
+          <FolderManager
+            onSelectFolder={handleFolderSelect}
+            selectedFolderId={selectedFolderId}
+            onDropAsset={() => {}}
+          />
         </div>
         
         {/* Products section */}
