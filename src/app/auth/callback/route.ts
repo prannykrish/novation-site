@@ -9,6 +9,14 @@ export async function GET(req: NextRequest) {
   const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
   const { searchParams } = new URL(req.url)
   const code = searchParams.get('code')
+  const type = searchParams.get('type')
+  
+  // Handle password recovery flow
+  if (type === 'recovery') {
+    return NextResponse.redirect(
+      new URL(`/auth/reset?type=recovery&code=${code}`, req.url)
+    )
+  }
   
   if (code) {
     console.log('Exchanging code for session...')
