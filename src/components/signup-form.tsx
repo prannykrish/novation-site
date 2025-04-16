@@ -99,7 +99,7 @@ export function SignUpForm({
               <div className="flex flex-col items-center text-center">
                 <h1 className="text-2xl font-bold">Create an account</h1>
                 <p className="text-muted-foreground text-balance">
-                  Sign up for your Acme Inc account
+                  Sign up for your Novation account
                 </p>
               </div>
               <div className="grid gap-3">
