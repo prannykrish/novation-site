@@ -294,25 +294,22 @@ export default function HeroSection() {
                         <div className="group-hover:blur-xs mx-auto mt-12 grid max-w-2xl grid-cols-4 gap-x-12 gap-y-8 transition-all duration-500 group-hover:opacity-50 sm:gap-x-16 sm:gap-y-14">
                             <div className="flex">
                                 <img
-                                    className="mx-auto h-5 w-fit dark:invert"
-                                    src="https://html.tailus.io/blocks/customers/nvidia.svg"
+                                    className="mx-auto h-6 w-fit dark:invert"
+                                    src="/images/Nvidia.svg"
                                     alt="Nvidia Logo"
-                                    height="20"
+                                    height="16"
                                     width="auto"
                                 />
-
-
-                                
                             </div>
                             <div className="flex">
-                                    <img
-                                        className="mx-auto h-6 w-fit dark:invert"
-                                        src="/images/awsblack.svg"
-                                        alt="AWS Logo"
-                                        height="16"
-                                        width="auto"
-                                    />
-                                </div>
+                                <img
+                                    className="mx-auto h-6 w-fit dark:invert"
+                                    src="/images/awsblack.svg"
+                                    alt="AWS Logo"
+                                    height="16"
+                                    width="auto"
+                                />
+                            </div>
 
                             <div className="flex">
                                 <img
@@ -323,8 +320,6 @@ export default function HeroSection() {
                                     width="auto"
                                 />
                             </div>
-
-
                             <div className="flex">
                                 <img
                                     className="mx-auto h-6 w-fit dark:invert"
