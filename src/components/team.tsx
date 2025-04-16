@@ -77,7 +77,7 @@ export default function TeamSection() {
             </section>
 
             {/* Board of Advisors Section */}
-            <section className="py-10 md:py-10 dark:bg-transparent">
+            {/* <section className="py-10 md:py-10 dark:bg-transparent">
                 <div className="mx-auto max-w-5xl border-t px-6">
                     <div className="mt-10 gap-4 sm:grid sm:grid-cols-2 md:mt-10">
                         <div className="sm:w-4/5">
@@ -117,7 +117,7 @@ export default function TeamSection() {
                         </div>
                     </div>
                 </div>
-            </section>
+            </section> */}
         </>
     )
 }
