@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { AlertCircle, X } from "lucide-react"
 
 export function LoginForm({
   className,
@@ -15,9 +16,13 @@ export function LoginForm({
 }: React.ComponentProps<"div">) {
   const router = useRouter();
   const [email, setEmail] = useState('');
+  const [resetEmail, setResetEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showResetForm, setShowResetForm] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
   
   // Use the proper client component client
   const supabase = createClientComponentClient();
@@ -47,6 +52,27 @@ export function LoginForm({
     }
   };
 
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetLoading(true);
+    setError(null);
+    
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
+      });
+      
+      if (error) throw error;
+      
+      setResetEmailSent(true);
+    } catch (err: any) {
+      console.error('Password reset error:', err);
+      setError(err.message);
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   const handleGoogleSignIn = async () => {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
@@ -66,80 +92,154 @@ export function LoginForm({
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card className="overflow-hidden p-0">
         <CardContent className="grid p-0 md:grid-cols-2">
-          <form className="p-6 md:p-8" onSubmit={handleSignIn}>
-            <div className="flex flex-col gap-6">
-              {error && (
-                <div className="bg-destructive/15 text-destructive p-3 rounded-md text-sm">
-                  {error}
-                </div>
-              )}
-              <div className="flex flex-col items-center text-center">
-                <h1 className="text-2xl font-bold">Welcome back</h1>
-                <p className="text-muted-foreground text-balance">
-                  Login to your Acme Inc account
-                </p>
-              </div>
-              <div className="grid gap-3">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="m@example.com"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-3">
-                <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
-                  <a
-                    href="#"
-                    className="ml-auto text-sm underline-offset-2 hover:underline"
-                  >
-                    Forgot your password?
-                  </a>
-                </div>
-                <Input 
-                  id="password" 
-                  type="password" 
-                  required 
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Signing in...' : 'Login'}
-              </Button>
-              <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
-                <span className="bg-card text-muted-foreground relative z-10 px-2">
-                  Or continue with Google
-                </span>
-              </div>
-              <div className="flex justify-center">
+          {showResetForm ? (
+            <div className="p-6 md:p-8">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold">Reset Password</h2>
                 <Button 
-                  variant="outline" 
-                  type="button" 
-                  className="w-1/2"
-                  onClick={handleGoogleSignIn}
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => {
+                    setShowResetForm(false);
+                    setResetEmailSent(false);
+                    setError(null);
+                  }}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                    <path
-                      d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"
-                      fill="currentColor"
-                    />
-                  </svg>
-                  <span className="sr-only">Sign in with Google</span>
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Close</span>
                 </Button>
               </div>
-              <div className="text-center text-sm">
-                Don't have an account?{" "}
-                <Link href="/signup" className="underline underline-offset-4">
-                  Sign up
-                </Link>
-              </div>
+              
+              {resetEmailSent ? (
+                <div className="bg-green-50 border border-green-200 text-green-600 p-4 rounded-md space-y-2">
+                  <h3 className="font-medium flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4" />
+                    Check your email
+                  </h3>
+                  <p className="text-sm">
+                    We've sent a password reset link to <strong>{resetEmail}</strong>. 
+                    Please check your inbox and follow the instructions to reset your password.
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    className="mt-2 w-full"
+                    onClick={() => {
+                      setShowResetForm(false);
+                      setResetEmailSent(false);
+                    }}
+                  >
+                    Back to Login
+                  </Button>
+                </div>
+              ) : (
+                <form onSubmit={handlePasswordReset} className="space-y-4">
+                  {error && (
+                    <div className="bg-destructive/15 text-destructive p-3 rounded-md text-sm">
+                      {error}
+                    </div>
+                  )}
+                  <p className="text-muted-foreground text-sm">
+                    Enter your email address and we'll send you a link to reset your password.
+                  </p>
+                  <div className="grid gap-3">
+                    <Label htmlFor="reset-email">Email</Label>
+                    <Input
+                      id="reset-email"
+                      type="email"
+                      placeholder="m@example.com"
+                      required
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                    />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={resetLoading}>
+                    {resetLoading ? 'Sending...' : 'Send Reset Link'}
+                  </Button>
+                </form>
+              )}
             </div>
-          </form>
+          ) : (
+            <form className="p-6 md:p-8" onSubmit={handleSignIn}>
+              <div className="flex flex-col gap-6">
+                {error && (
+                  <div className="bg-destructive/15 text-destructive p-3 rounded-md text-sm">
+                    {error}
+                  </div>
+                )}
+                <div className="flex flex-col items-center text-center">
+                  <h1 className="text-2xl font-bold">Welcome back</h1>
+                  <p className="text-muted-foreground text-balance">
+                    Login to your Acme Inc account
+                  </p>
+                </div>
+                <div className="grid gap-3">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="m@example.com"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-3">
+                  <div className="flex items-center">
+                    <Label htmlFor="password">Password</Label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowResetForm(true);
+                        setResetEmail(email);
+                        setError(null);
+                      }}
+                      className="ml-auto text-sm underline-offset-2 hover:underline"
+                    >
+                      Forgot your password?
+                    </button>
+                  </div>
+                  <Input 
+                    id="password" 
+                    type="password" 
+                    required 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? 'Signing in...' : 'Login'}
+                </Button>
+                <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
+                  <span className="bg-card text-muted-foreground relative z-10 px-2">
+                    Or continue with Google
+                  </span>
+                </div>
+                <div className="flex justify-center">
+                  <Button 
+                    variant="outline" 
+                    type="button" 
+                    className="w-1/2"
+                    onClick={handleGoogleSignIn}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                      <path
+                        d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"
+                        fill="currentColor"
+                      />
+                    </svg>
+                    <span className="sr-only">Sign in with Google</span>
+                  </Button>
+                </div>
+                <div className="text-center text-sm">
+                  Don't have an account?{" "}
+                  <Link href="/signup" className="underline underline-offset-4">
+                    Sign up
+                  </Link>
+                </div>
+              </div>
+            </form>
+          )}
+          
           <div className="bg-muted relative hidden md:block">
             <img
               src="/placeholder.svg"
