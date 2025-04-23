@@ -66,6 +66,7 @@ export function AppSidebar({
   const [lastMessageTime, setLastMessageTime] = React.useState<Date | null>(null)
   const { setOpen } = useSidebar()
   const router = useRouter()
+  const messageSubscriptionRef = React.useRef<RealtimeChannel | null>(null)
 
   // Fetch unread message count on load
   React.useEffect(() => {
@@ -97,8 +98,7 @@ export function AppSidebar({
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       if (session) {
-        // Subscribe to new messages
-        const messageSubscription = supabase
+        messageSubscriptionRef.current = supabase
           .channel('sidebar_messages_channel')
           .on('postgres_changes', {
             event: 'INSERT',
@@ -141,11 +141,9 @@ export function AppSidebar({
             fetchUnreadMessages()
           })
           .subscribe()
-          
-        // Cleanup subscription when component unmounts
-        return () => {
-          messageSubscription.unsubscribe()
-        }
+      } else {
+        messageSubscriptionRef.current?.unsubscribe()
+        messageSubscriptionRef.current = null
       }
     })
     
@@ -156,6 +154,7 @@ export function AppSidebar({
     
     return () => {
       subscription?.unsubscribe()
+      messageSubscriptionRef.current?.unsubscribe()
     }
   }, [])
 
@@ -309,6 +308,7 @@ function MessagesSidebar({ unreadCount }: { unreadCount: number }) {
   const [messages, setMessages] = React.useState<Message[]>([])
   const [loading, setLoading] = React.useState(true)
   const router = useRouter()
+  const messageSubscriptionRef = React.useRef<RealtimeChannel | null>(null)
 
   React.useEffect(() => {
     const fetchMessages = async () => {
@@ -333,7 +333,7 @@ function MessagesSidebar({ unreadCount }: { unreadCount: number }) {
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       if (session) {
-        const messageSubscription = supabase
+        messageSubscriptionRef.current = supabase
           .channel('messages_sidebar_channel')
           .on('postgres_changes', {
             event: '*', // Listen to all changes (INSERT, UPDATE, DELETE)
@@ -345,15 +345,15 @@ function MessagesSidebar({ unreadCount }: { unreadCount: number }) {
             fetchMessages()
           })
           .subscribe()
-          
-        return () => {
-          messageSubscription.unsubscribe()
-        }
+      } else {
+        messageSubscriptionRef.current?.unsubscribe()
+        messageSubscriptionRef.current = null
       }
     })
     
     return () => {
       subscription?.unsubscribe()
+      messageSubscriptionRef.current?.unsubscribe()
     }
   }, [])
 
