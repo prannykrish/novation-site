@@ -5,7 +5,7 @@ import { ArrowLeft } from "lucide-react"
 
 export default function SignUpPage() {
   return (
-    <div className="relative min-h-svh">
+    <div className="relative min-h-screen bg-background text-foreground">
       <div className="absolute top-4 left-4">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/">
@@ -14,7 +14,7 @@ export default function SignUpPage() {
           </Link>
         </Button>
       </div>
-      <div className="flex min-h-svh flex-col items-center justify-center p-6 md:p-10">
+      <div className="flex min-h-screen flex-col items-center justify-center p-6 md:p-10">
         <div className="w-full max-w-sm md:max-w-3xl">
           <SignUpForm />
         </div>

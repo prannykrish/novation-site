@@ -18,6 +18,14 @@ export interface Folder {
   createdAt: string;
 }
 
+// Asset file interface
+export interface AssetFile {
+  url: string;
+  name: string;
+  type: string;
+  size?: number;
+}
+
 // Asset interface
 export interface Asset {
   id: string;
@@ -29,7 +37,8 @@ export interface Asset {
   isPublic: boolean;
   usageStartDate?: string;
   usageEndDate?: string;
-  fileUrl?: string;
+  fileUrl?: string; // Legacy single file support
+  files?: AssetFile[]; // New multiple files support
   createdAt: string;
   userId: string;
   folderId?: string | null;
@@ -84,6 +93,17 @@ export interface Message {
   senderName?: string;
   recipientEmail?: string;
   recipientName?: string;
+  attachments?: MessageAttachment[]; // Add support for message attachments
+}
+
+// Message attachment interface
+export interface MessageAttachment {
+  id?: string;
+  url: string;
+  name: string;
+  type: string;
+  size?: number;
+  messageId?: string;
 }
 
 // Search filter interface
@@ -95,6 +115,16 @@ export interface SearchFilters {
   startDate?: string;
   endDate?: string;
   isPublicOnly?: boolean;
+  page?: number;
+  pageSize?: number;
+}
+
+// Blocked user interface
+export interface BlockedUser {
+  id?: string;
+  blockerId: string;
+  blockedId: string;
+  createdAt?: string;
 }
 
 // Supabase Database definition

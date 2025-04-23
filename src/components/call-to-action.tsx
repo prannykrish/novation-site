@@ -16,7 +16,7 @@ export default function CallToAction() {
                             </Link>
                         </Button>
 
-                        <Button asChild size="lg" variant="outline">
+                        <Button asChild size="lg" variant="outline" className="root:bg-white ">
                             <Link href="/help">
                                 <span>Contact Us</span>
                             </Link>

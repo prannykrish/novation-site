@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Folder, FolderOpen, Plus, MoreVertical, Edit, Trash2, ChevronRight } from "lucide-react";
+import { Folder, FolderOpen, Plus, MoreVertical, Edit, Trash2, ChevronRight, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -72,12 +72,22 @@ function DraggableAsset({ asset, onEdit }: { asset: any; onEdit: () => void }) {
   );
 }
 
+// Format the description text for better readability
+const formatDescription = (description: string | null | undefined): string => {
+  if (!description) return "No description provided";
+  
+  // Preserve paragraph breaks
+  return description.trim();
+};
+
 export function FolderManager({ onSelectFolder, selectedFolderId, onDropAsset }: FolderManagerProps) {
   const [currentFolderId, setCurrentFolderId] = React.useState<string | null>(selectedFolderId);
   const [folderPath, setFolderPath] = React.useState<FolderType[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [folders, setFolders] = React.useState<FolderType[]>([]);
   const [assets, setAssets] = React.useState<any[]>([]); // Assuming assets are fetched and stored here
+  const [activeFolder, setActiveFolder] = React.useState<FolderType | null>(null);
+  const [showFolderDetailsDialog, setShowFolderDetailsDialog] = React.useState(false);
 
   React.useEffect(() => {
     if (currentFolderId !== selectedFolderId) {
@@ -125,6 +135,19 @@ export function FolderManager({ onSelectFolder, selectedFolderId, onDropAsset }:
   const navigateToFolder = (folder: FolderType) => {
     setCurrentFolderId(folder.id);
     onSelectFolder(folder.id);
+  };
+
+  const showFolderDetails = async (folder: FolderType) => {
+    try {
+      // Fetch the latest folder data to ensure we have the most recent information
+      const folderDetails = await folderService.getFolderById(folder.id);
+      if (folderDetails) {
+        setActiveFolder(folderDetails);
+        setShowFolderDetailsDialog(true);
+      }
+    } catch (error) {
+      console.error("Error fetching folder details:", error);
+    }
   };
 
   const navigateToRoot = () => {
@@ -255,6 +278,47 @@ export function FolderManager({ onSelectFolder, selectedFolderId, onDropAsset }:
           <Folder className="h-4 w-4 mr-2" />
           <span className="truncate">{folder.name}</span>
         </Button>
+        
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 opacity-70 hover:opacity-100"
+          onClick={(e) => {
+            e.stopPropagation();
+            showFolderDetails(folder);
+          }}
+        >
+          <Info className="h-4 w-4" />
+          <span className="sr-only">Folder Details</span>
+        </Button>
+        
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 opacity-70 hover:opacity-100"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MoreVertical className="h-4 w-4" />
+              <span className="sr-only">Open menu</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => prepareEditFolder(folder)}>
+              <Edit className="mr-2 h-4 w-4" />
+              Edit Folder
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
+              onClick={() => prepareDeleteFolder(folder)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete Folder
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     );
   };
@@ -366,6 +430,72 @@ export function FolderManager({ onSelectFolder, selectedFolderId, onDropAsset }:
           </div>
         )}
       </ScrollArea>
+
+      {/* Folder Details Dialog */}
+      <Dialog open={showFolderDetailsDialog} onOpenChange={setShowFolderDetailsDialog}>
+        <DialogContent className="sm:max-w-[525px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <Folder className="h-5 w-5" />
+              Folder: {activeFolder?.name}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Description */}
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-muted-foreground">Description</h4>
+              <div className="rounded-md border p-3 bg-muted/30">
+                <p className="text-sm whitespace-pre-wrap leading-relaxed">
+                  {formatDescription(activeFolder?.description)}
+                </p>
+              </div>
+            </div>
+            
+            {/* Folder metadata */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h4 className="text-xs font-medium text-muted-foreground mb-1">Created</h4>
+                <p className="text-sm">
+                  {activeFolder?.createdAt 
+                    ? new Date(activeFolder.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })
+                    : 'Unknown date'}
+                </p>
+              </div>
+              <div>
+                <h4 className="text-xs font-medium text-muted-foreground mb-1">Location</h4>
+                <p className="text-sm">
+                  {currentFolderId ? 'Subfolder' : 'Root level'}
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter className="gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowFolderDetailsDialog(false)}
+            >
+              Close
+            </Button>
+            <Button
+              onClick={() => {
+                setShowFolderDetailsDialog(false);
+                if (activeFolder) {
+                  prepareEditFolder(activeFolder);
+                }
+              }}
+            >
+              <Edit className="mr-2 h-4 w-4" />
+              Edit Folder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showAddFolderDialog} onOpenChange={setShowAddFolderDialog}>
         <DialogContent className="sm:max-w-[425px]">

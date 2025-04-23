@@ -144,11 +144,11 @@ export function SignUpForm({
                   onChange={(e) => setConfirmPassword(e.target.value)}
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90" disabled={loading}>
                 {loading ? 'Signing up...' : 'Sign Up'}
               </Button>
-              <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
-                <span className="bg-card text-muted-foreground relative z-10 px-2">
+              <div className="relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border">
+                <span className="bg-background text-muted-foreground relative z-10 px-2">
                   Or continue with Google
                 </span>
               </div>
@@ -156,7 +156,7 @@ export function SignUpForm({
                 <Button 
                   variant="outline" 
                   type="button" 
-                  className="w-1/2"
+                  className="w-1/2 hover:bg-muted"
                   onClick={handleGoogleSignUp}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -170,7 +170,7 @@ export function SignUpForm({
               </div>
               <div className="text-center text-sm">
                 Already have an account?{" "}
-                <Link href="/signin" className="underline underline-offset-4">
+                <Link href="/signin" className="underline underline-offset-4 hover:text-primary">
                   Sign in
                 </Link>
               </div>
@@ -190,9 +190,9 @@ export function SignUpForm({
           </div>
         </CardContent>
       </Card>
-      <div className="text-muted-foreground *:[a]:hover:text-primary text-center text-xs text-balance *:[a]:underline *:[a]:underline-offset-4">
-        By clicking continue, you agree to our <a href="#">Terms of Service</a>{" "}
-        and <a href="#">Privacy Policy</a>.
+      <div className="text-muted-foreground text-center text-xs text-balance">
+        By clicking continue, you agree to our <a href="#" className="underline hover:text-primary">Terms of Service</a>{" "}
+        and <a href="#" className="underline hover:text-primary">Privacy Policy</a>.
       </div>
     </div>
   )

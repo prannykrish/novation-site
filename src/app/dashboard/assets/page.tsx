@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-import { Folder as FolderIcon, Plus, Edit, Trash2, Maximize2 } from "lucide-react"
+import React, { useState, useEffect, useRef } from "react"
+import { Folder as FolderIcon, Plus, Edit, Trash2, Maximize2, FileImage, FileText, PresentationIcon, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,317 +11,426 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { assetService, folderService } from "@/lib/database"
-import { Asset, Folder } from "@/types/database"
-import { DndProvider, useDrag, useDrop } from 'react-dnd'
-import { HTML5Backend } from 'react-dnd-html5-backend'
-import React from "react"
+import { Asset, Folder, AssetFile } from "@/types/database"
+import { DndProvider, useDrag, useDrop } from "react-dnd"
+import { HTML5Backend } from "react-dnd-html5-backend"
+import { FilePreview } from "@/components/file-preview"
+import { ScrollArea } from "@/components/ui/scroll-area"
+
+/* ----------------------------------------------------------------
+  Types
+-----------------------------------------------------------------*/
+interface AssetWithMeta extends Asset {
+  /** local flag that opens the expand dialog instead of edit */
+  _expandView?: boolean
+}
+
+interface DragItem {
+  id: string
+  kind: typeof ItemTypes.ASSET | typeof ItemTypes.FOLDER
+}
+
+/* ----------------------------------------------------------------
+  Constants & helpers
+-----------------------------------------------------------------*/
+const ItemTypes = { ASSET: "asset", FOLDER: "folder" } as const
 
 const DEFAULT_ASSET_TYPES = [
   { id: "document", name: "Document" },
   { id: "image", name: "Image" },
   { id: "presentation", name: "Presentation" },
   { id: "spreadsheet", name: "Spreadsheet" },
-  { id: "other", name: "Other" }
+  { id: "other", name: "Other" },
 ]
 
 const DEFAULT_CATEGORIES = [
   { id: "body-care", name: "Body Care" },
-  { id: "mens-grooming", name: "Men's Grooming" }
+  { id: "mens-grooming", name: "Men's Grooming" },
 ]
 
-// Drag item types
-const ItemTypes = {
-  ASSET: 'asset',
-  FOLDER: 'folder'
+const getAssetIcon = (type?: string) => {
+  switch (type?.toLowerCase()) {
+    case "image":
+      return <FileImage className="h-4 w-4" />
+    case "presentation":
+      return <PresentationIcon className="h-4 w-4" />
+    case "document":
+    default:
+      return <FileText className="h-4 w-4" />
+  }
 }
 
-// Draggable asset component
-function DraggableAsset({ asset, onEdit, onDelete }: { 
-  asset: Asset, 
-  onEdit: (asset: Asset) => void,
-  onDelete: (assetId: string) => void 
+const truncateText = (txt?: string, len = 40) => (txt && txt.length > len ? `${txt.slice(0, len - 1)}…` : txt || "")
+
+/* ----------------------------------------------------------------
+  Draggable Asset Card
+-----------------------------------------------------------------*/
+function DraggableAsset({
+  asset,
+  onEdit,
+  onDelete,
+  onPreviewFile,
+  onExpand,
+}: {
+  asset: AssetWithMeta
+  onEdit: (a: AssetWithMeta) => void
+  onDelete: (id: string) => void
+  onPreviewFile: (file: AssetFile) => void
+  onExpand: (a: AssetWithMeta) => void
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [{ isDragging }, drag] = useDrag({
+  const ref = useRef<HTMLDivElement>(null)
+  const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.ASSET,
-    item: { id: asset.id, type: ItemTypes.ASSET },
-    collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
-    }),
-  });
-  
-  drag(ref);
-  
+    item: { id: asset.id, kind: ItemTypes.ASSET } satisfies DragItem,
+    collect: (m) => ({ isDragging: m.isDragging() }),
+  }))
+  drag(ref)
+
   return (
-    <div 
-      ref={ref} 
-      className={`rounded-lg border bg-card p-4 shadow-sm hover:shadow-md transition-all ${
-        isDragging ? 'opacity-50 ring-2 ring-primary ring-offset-2' : ''
-      }`}
-      style={{ touchAction: 'none' }}
+    <div
+      ref={ref}
+      className={`rounded-lg border bg-card p-4 shadow-sm transition-all hover:shadow-md ${isDragging ? "opacity-50 ring-2 ring-primary" : ""}`}
+      style={{ touchAction: "none" }}
     >
-      <div className="flex justify-between items-start mb-2">
-        <div className="max-w-[80%]">
-          <h3 className="font-medium text-lg line-clamp-1">{asset.name}</h3>
-          <p className="text-xs text-muted-foreground line-clamp-1">{asset.type}</p>
+      {/* Header Section - Type Icon, Title, and Menu */}
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-start gap-2 max-w-[85%]">
+          <span className="h-6 w-6 rounded bg-muted flex items-center justify-center shrink-0">{getAssetIcon(asset.type)}</span>
+          <div className="min-w-0">
+            <h3 className="font-medium text-base line-clamp-1" title={asset.name}>
+              {asset.name}
+            </h3>
+            <p className="text-xs text-muted-foreground line-clamp-1 capitalize" title={asset.type}>
+              {asset.type}
+            </p>
+          </div>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
-              <span className="sr-only">Menu</span>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => onEdit(asset)}>
-              <Edit className="mr-2 h-4 w-4" />
-              Edit
+              <Edit className="mr-2 h-4 w-4" />Edit
             </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={() => onDelete(asset.id)} 
-              className="text-destructive focus:text-destructive"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
+            <DropdownMenuItem onClick={() => onDelete(asset.id)} className="text-destructive">
+              <Trash2 className="mr-2 h-4 w-4" />Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
       
+      {/* Description Section */}
       {asset.description && (
-        <p className="text-sm text-muted-foreground mt-1 mb-2 line-clamp-2">{asset.description}</p>
+        <p className="text-sm text-muted-foreground mb-3 line-clamp-2" title={asset.description}>
+          {asset.description}
+        </p>
       )}
       
+      {/* Metadata Section */}
       <div className="space-y-2">
+        {/* Category */}
         {asset.category && (
-          <div className="text-xs overflow-hidden">
-            <span className="text-muted-foreground">Category: </span>
-            <span className="inline-block line-clamp-1">{asset.category}</span>
+          <div className="text-xs flex items-center">
+            <span className="text-muted-foreground min-w-[70px]">Category:</span>
+            <span className="truncate font-medium" title={asset.category}>
+              {asset.category.replace(/-/g, ' ')}
+            </span>
           </div>
         )}
         
-        {asset.tags && asset.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1 max-h-[40px] overflow-hidden">
-            {asset.tags.map((tag, i) => (
-              <span key={i} className="text-xs bg-muted px-2 py-0.5 rounded truncate max-w-[100px]">{tag}</span>
-            ))}
+        {/* Tags */}
+        {!!asset.tags?.length && (
+          <div className="mt-2">
+            <div className="text-xs text-muted-foreground mb-1">Tags:</div>
+            <div className="flex flex-wrap gap-1 max-h-[40px] overflow-hidden">
+              {asset.tags.slice(0, 3).map((t, i) => (
+                <span key={i} className="text-xs bg-muted px-2 py-0.5 rounded truncate max-w-[100px]" title={t}>
+                  {t}
+                </span>
+              ))}
+              {asset.tags.length > 3 && <span className="text-xs bg-muted px-2 py-0.5 rounded">+{asset.tags.length - 3}</span>}
+            </div>
           </div>
         )}
         
-        <div className="text-xs flex justify-between mt-2">
-          <span className={asset.isPublic ? "text-green-600 dark:text-green-400" : "text-amber-600 dark:text-amber-400"}>
+        {/* Files section */}
+        {((asset.files && asset.files.length > 0) || asset.fileUrl) && (
+          <div className="mt-2 pt-2 border-t border-border">
+            <div className="text-xs text-muted-foreground mb-1">Files:</div>
+            <div className="space-y-1">
+              {/* Show legacy fileUrl if present */}
+              {asset.fileUrl && (
+                <div className="text-xs flex items-center justify-between gap-1">
+                  <div className="flex items-center gap-1">
+                    <FileText className="h-3 w-3 text-muted-foreground" />
+                    <a 
+                      href={asset.fileUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="truncate text-primary hover:underline"
+                      title="View file"
+                    >
+                      Attached file
+                    </a>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-6 w-6 rounded-full hover:bg-muted" 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onPreviewFile({url: asset.fileUrl!, name: "Attached file", type: "", size: 0});
+                    }}
+                  >
+                    <Eye className="h-3 w-3" />
+                    <span className="sr-only">Preview</span>
+                  </Button>
+                </div>
+              )}
+              
+              {/* Show multi-file attachments */}
+              {asset.files?.map((file, index) => (
+                <div key={index} className="text-xs flex items-center justify-between gap-1">
+                  <div className="flex items-center gap-1 min-w-0">
+                    <FileText className="h-3 w-3 shrink-0 text-muted-foreground" />
+                    <a 
+                      href={file.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="truncate text-primary hover:underline"
+                      title={file.name || "View file"}
+                    >
+                      {truncateText(file.name || `File ${index + 1}`, 25)}
+                    </a>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-6 w-6 rounded-full hover:bg-muted" 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onPreviewFile(file);
+                    }}
+                  >
+                    <Eye className="h-3 w-3" />
+                    <span className="sr-only">Preview</span>
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* Footer with visibility badge and expand button */}
+        <div className="flex justify-between items-center text-xs pt-2 mt-2 border-t border-border">
+          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+            asset.isPublic 
+              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" 
+              : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+          }`}>
             {asset.isPublic ? "Public" : "Private"}
           </span>
-          <span className="text-muted-foreground">
-            {new Date(asset.createdAt).toLocaleDateString()}
-          </span>
+          
+          <Button variant="ghost" size="sm" className="h-7 p-0 px-2" onClick={() => onExpand(asset)}>
+            <Maximize2 className="h-3.5 w-3.5 mr-1" />
+            <span>Expand</span>
+          </Button>
         </div>
       </div>
     </div>
-  );
+  )
 }
 
-// Draggable and droppable folder component
-function DraggableFolderCard({ 
-  folder, 
+/* ----------------------------------------------------------------
+  Draggable Folder Card
+-----------------------------------------------------------------*/
+function DraggableFolderCard({
+  folder,
   onNavigate,
   onEdit,
   onDelete,
   onDrop,
-  onExpand
-}: { 
-  folder: Folder, 
-  onNavigate: (folderId: string) => void,
-  onEdit: (folder: Folder) => void,
-  onDelete: (folderId: string) => void,
-  onDrop: (itemId: string, itemType: string, targetFolderId: string) => void,
-  onExpand: (folder: Folder, e: React.MouseEvent) => void
+  onExpand,
+}: {
+  folder: Folder
+  onNavigate: (id: string) => void
+  onEdit: (f: Folder) => void
+  onDelete: (id: string) => void
+  onDrop: (itemId: string, itemType: string, targetId: string) => void
+  onExpand: (f: Folder) => void
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [isHovered, setIsHovered] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
-  
-  // Make the folder draggable
-  const [{ isDragging }, drag] = useDrag({
+  const ref = useRef<HTMLDivElement>(null)
+  const [hover, setHover] = useState(false)
+  const [isDragOver, setIsDragOver] = useState(false)
+
+  const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.FOLDER,
-    item: { id: folder.id, type: ItemTypes.FOLDER },
-    collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
-    }),
-  });
-  
-  // Make the folder a drop target for both assets and other folders
-  const [{ isOver, canDrop }, drop] = useDrop({
+    item: { id: folder.id, kind: ItemTypes.FOLDER } satisfies DragItem,
+    collect: (m) => ({ isDragging: m.isDragging() }),
+  }))
+
+  const [{ isOver, canDrop }, drop] = useDrop(() => ({
     accept: [ItemTypes.ASSET, ItemTypes.FOLDER],
-    drop: (item: { id: string, type: string }) => {
-      if (item.id !== folder.id) { // Prevent dropping folder onto itself
-        onDrop(item.id, item.type, folder.id);
+    drop: (item: DragItem) => {
+      if (item.id !== folder.id) {
+        // Prevent circular references (folder can't be dropped into itself)
+        onDrop(item.id, item.kind, folder.id);
+        return { droppedInFolder: true };
       }
     },
-    canDrop: (item) => item.id !== folder.id, // Prevent dropping folder onto itself
-    collect: (monitor) => ({
-      isOver: monitor.isOver(),
-      canDrop: monitor.canDrop(),
-    }),
-  });
-  
-  // Toggle folder expanded state
-  const toggleExpand = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsExpanded(!isExpanded);
-    
-    // If expanding the folder, also call onExpand for additional information
-    if (!isExpanded) {
-      onExpand(folder, e);
+    canDrop: (item: DragItem) => item.id !== folder.id,
+    collect: (m) => ({ isOver: m.isOver(), canDrop: m.canDrop() }),
+    hover: (item, monitor) => {
+      if (monitor.isOver({ shallow: true })) {
+        setIsDragOver(true);
+      }
     }
-  };
+  }))
   
-  // Combine drag and drop refs
-  drag(drop(ref));
-  
+  // Reset drag over state when not hovering
+  useEffect(() => {
+    if (!isOver) {
+      setIsDragOver(false);
+    }
+  }, [isOver]);
+
+  drag(drop(ref))
+
   return (
-    <div 
-      ref={ref} 
-      className={`rounded-lg border bg-card p-4 shadow-sm transition-all cursor-pointer
-        ${isDragging ? 'opacity-50 ring-2 ring-primary ring-offset-2' : ''}
-        ${isOver && canDrop ? 'ring-2 ring-primary ring-offset-2 bg-primary/5' : ''}
-        ${isHovered ? 'shadow-md bg-muted/30' : ''}`}
+    <div
+      ref={ref}
+      className={`rounded-lg border bg-card p-4 cursor-pointer transition-all relative
+        ${isDragging ? "opacity-50 ring-2 ring-primary" : ""} 
+        ${isOver && canDrop ? "ring-2 ring-primary/60 bg-primary/10" : ""} 
+        ${hover ? "shadow-md bg-muted/30" : "shadow-sm"}`}
       onClick={() => onNavigate(folder.id)}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      style={{ touchAction: 'none' }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{ touchAction: "none" }}
     >
-      <div className="flex justify-between items-start">
-        <div className="flex items-center">
-          <FolderIcon className="h-8 w-8 text-primary mr-2" />
-          <div>
-            <div className="flex items-center gap-1 group">
-              <h3 className="font-medium text-lg line-clamp-1">{folder.name}</h3>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className={`h-5 w-5 ${isHovered ? 'opacity-100' : 'opacity-30'} transition-opacity`} 
-                onClick={toggleExpand}
-              >
-                <Maximize2 className="h-3 w-3" />
-                <span className="sr-only">{isExpanded ? 'Collapse' : 'Expand'}</span>
-              </Button>
-            </div>
+      {/* Header Section - Folder Icon, Title, and Menu */}
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <FolderIcon className="h-7 w-7 text-primary shrink-0" />
+          <div className="min-w-0">
+            <h3 className="font-medium text-base line-clamp-1" title={folder.name}>
+              {folder.name}
+            </h3>
             {folder.description && (
-              <div className={`flex items-center gap-1 group ${isExpanded ? '' : 'line-clamp-1'}`}>
-                <p className="text-xs text-muted-foreground">{folder.description}</p>
-                {folder.description.length > 30 && !isExpanded && (
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className={`h-4 w-4 ${isHovered ? 'opacity-100' : 'opacity-30'} transition-opacity`} 
-                    onClick={toggleExpand}
-                  >
-                    <Maximize2 className="h-2 w-2" />
-                    <span className="sr-only">Expand</span>
-                  </Button>
-                )}
-              </div>
+              <p className="text-xs text-muted-foreground line-clamp-2" title={folder.description}>
+                {folder.description}
+              </p>
             )}
           </div>
         </div>
-        
         <DropdownMenu>
           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
             <Button variant="ghost" size="icon" className="h-8 w-8">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
-              <span className="sr-only">Menu</span>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={(e) => {
-              e.stopPropagation();
-              toggleExpand(e);
-            }}>
-              <Maximize2 className="mr-2 h-4 w-4" />
-              {isExpanded ? 'Collapse' : 'Expand'}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={(e) => {
-              e.stopPropagation();
+              e.stopPropagation(); // Stop event propagation
               onEdit(folder);
             }}>
-              <Edit className="mr-2 h-4 w-4" />
-              Edit
+              <Edit className="mr-2 h-4 w-4" />Edit
             </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(folder.id);
-              }}
-              className="text-destructive focus:text-destructive"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
+            <DropdownMenuItem onClick={(e) => {
+              e.stopPropagation(); // Stop event propagation
+              onDelete(folder.id);
+            }} className="text-destructive">
+              <Trash2 className="mr-2 h-4 w-4" />Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
       
-      {/* Display expanded description when toggled */}
-      {isExpanded && folder.description && (
-        <div className="mt-2 pt-2 border-t">
-          <p className="text-sm">{folder.description}</p>
+      {/* Status indicator for droppable area */}
+      {isOver && canDrop && (
+        <div className="mt-2 py-2 px-3 bg-primary/10 text-xs rounded border border-primary/30 text-center">
+          Drop here to move item
         </div>
       )}
       
+      {/* Footer with expand button */}
+      <div className="flex justify-end items-center text-xs pt-2 mt-2 border-t border-border">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="h-7 p-0 px-2" 
+          onClick={(e) => { 
+            e.stopPropagation(); 
+            onExpand(folder);
+          }}
+        >
+          <Maximize2 className="h-3.5 w-3.5 mr-1" />
+          <span>Expand</span>
+        </Button>
+      </div>
+      
+      {/* Visual indicator for dropTarget */}
       {isOver && canDrop && (
-        <div className="absolute inset-0 bg-primary/10 rounded-lg border-2 border-primary border-dashed pointer-events-none" />
+        <div className="absolute inset-0 border-2 border-primary border-dashed rounded-lg pointer-events-none" />
       )}
     </div>
-  );
+  )
 }
 
-// Root drop area component (for dropping into "root" - no folder)
-function RootDropArea({ 
-  onDrop, 
-  isActive 
-}: { 
-  onDrop: (itemId: string, itemType: string) => void,
-  isActive: boolean
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  
-  const [{ isOver, canDrop }, drop] = useDrop({
+/* ----------------------------------------------------------------
+  Root Drop Area
+-----------------------------------------------------------------*/
+function RootDropArea({ onDrop, isActive }: { onDrop: (id: string, tp: string) => void; isActive: boolean }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [{ isOver, canDrop }, drop] = useDrop(() => ({
     accept: [ItemTypes.ASSET, ItemTypes.FOLDER],
-    drop: (item: { id: string, type: string }) => {
-      onDrop(item.id, item.type);
+    drop: (item: DragItem) => {
+      onDrop(item.id, item.kind);
+      return { droppedInRoot: true }; // Return a value to stop propagation
     },
-    collect: (monitor) => ({
-      isOver: monitor.isOver(),
-      canDrop: monitor.canDrop(),
+    collect: (m) => ({ 
+      isOver: m.isOver(), 
+      canDrop: m.canDrop() 
     }),
-  });
+  }))
   
-  drop(ref);
+  if (!isActive) return null
   
-  if (!isActive) return null;
+  drop(ref)
   
   return (
-    <div 
-      ref={ref} 
-      className={`mt-4 mb-2 rounded-lg border-2 border-dashed p-8 flex justify-center items-center ${
-        isOver && canDrop ? 'border-primary bg-primary/5' : 'border-muted-foreground/20'
-      }`}
+    <div
+      ref={ref}
+      className={`mb-6 mt-4 p-6 border-2 border-dashed rounded-lg flex items-center justify-center transition-all
+        ${isOver && canDrop 
+          ? "border-primary bg-primary/10 shadow-lg" 
+          : "border-muted-foreground/20 hover:border-primary/40 hover:bg-muted/10"}`}
+      style={{ touchAction: "none" }}
     >
-      <p className="text-muted-foreground">
-        {isOver && canDrop ? "Drop to move to root" : "Drag items here to move to root"}
+      <p className="text-muted-foreground text-sm flex items-center">
+        {isOver && canDrop 
+          ? <><FolderIcon className="mr-2 h-4 w-4 text-primary" /> Drop here to move to root folder</>
+          : <><FolderIcon className="mr-2 h-4 w-4" /> Drag items here to move to root folder</>}
       </p>
     </div>
-  );
+  )
 }
 
+/* ----------------------------------------------------------------
+  Main Component
+-----------------------------------------------------------------*/
 export default function AssetsPage() {
-  // State for assets and folders
-  const [assets, setAssets] = useState<Asset[]>([]);
+  // State for folders and assets
+  const [loading, setLoading] = useState(false);
   const [folders, setFolders] = useState<Folder[]>([]);
+  const [assets, setAssets] = useState<AssetWithMeta[]>([]);
   const [currentFolder, setCurrentFolder] = useState<Folder | null>(null);
   const [folderPath, setFolderPath] = useState<Folder[]>([]);
-  const [loading, setLoading] = useState(false);
   
   // Dialog states
   const [showAddAssetDialog, setShowAddAssetDialog] = useState(false);
@@ -330,138 +439,267 @@ export default function AssetsPage() {
   const [showEditFolderDialog, setShowEditFolderDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showExpandDialog, setShowExpandDialog] = useState(false);
-  const [expandedFolder, setExpandedFolder] = useState<Folder | null>(null);
   
-  // Form states
+  // Currently editing items
+  const [currentEditingFolder, setCurrentEditingFolder] = useState<Folder | null>(null);
+  const [currentEditingAsset, setCurrentEditingAsset] = useState<AssetWithMeta | null>(null);
+  const [expandedAsset, setExpandedAsset] = useState<AssetWithMeta | null>(null);
+  const [expandedFolder, setExpandedFolder] = useState<Folder | null>(null);
+  const [fileUploading, setFileUploading] = useState(false);
+  
+  // Root drop area state
+  const [showRootDrop, setShowRootDrop] = useState(false);
+
+  // File preview state
+  const [previewFile, setPreviewFile] = useState<AssetFile | null>(null);
+  const [showFilePreview, setShowFilePreview] = useState(false);
+  
+  // File upload states
+  const [uploadedFiles, setUploadedFiles] = useState<AssetFile[]>([]);
+  const [editUploadedFiles, setEditUploadedFiles] = useState<AssetFile[]>([]); 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const editFileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Delete dialog state
+  const [deleteChildren, setDeleteChildren] = useState(false);
+  const [deletingItem, setDeletingItem] = useState<{ id: string; name: string; type: string } | null>(null);
+  
+  // Form states for new and edited assets/folders
   const [newAsset, setNewAsset] = useState({
     name: "",
-    type: "",
+    type: "document",
     description: "",
     category: "",
     tags: "",
     isPublic: true,
     usageStartDate: "",
     usageEndDate: "",
+    fileUrl: ""
   });
   
   const [newFolder, setNewFolder] = useState({
     name: "",
-    description: "",
+    description: ""
   });
-  
-  // Edit states
-  const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
-  const [editingFolder, setEditingFolder] = useState<Folder | null>(null);
-  const [deletingItem, setDeletingItem] = useState<{ id: string, type: string, name: string } | null>(null);
-  const [deleteChildren, setDeleteChildren] = useState(false);
 
-  // Load initial data and handle navigation
-  useEffect(() => {
-    loadFolderContent();
-  }, [currentFolder]);
-
-  const loadFolderContent = async () => {
-    setLoading(true);
-    try {
-      // Load folders in current location
-      const folderData = await folderService.getFolders(currentFolder?.id || null);
-      setFolders(folderData);
-      
-      // Load assets in current location
-      const assetData = await assetService.getAssets({ 
-        folderId: currentFolder?.id || undefined
-      });
-      
-      // Filter the assets to ensure only those that belong to the current folder are shown
-      // This ensures assets in subfolders don't appear in root and vice versa
-      const filteredAssetData = assetData.filter(asset => {
-        if (currentFolder) {
-          // In a folder: show only assets that belong to this specific folder
-          return asset.folderId === currentFolder.id;
-        } else {
-          // In root: show only assets that don't belong to any folder
-          return asset.folderId === null;
-        }
-      });
-      
-      setAssets(filteredAssetData);
-      
-      // Update folder path if needed
-      if (currentFolder) {
-        if (!folderPath.some(f => f.id === currentFolder.id)) {
-          const updatedPath = [...folderPath, currentFolder];
-          setFolderPath(updatedPath);
-        }
-      } else {
-        setFolderPath([]);
-      }
-    } catch (error) {
-      console.error("Error loading folder content:", error);
-    } finally {
-      setLoading(false);
-    }
+  const prepareEditFolder = (folder: Folder) => {
+    setCurrentEditingFolder(folder);
+    setNewFolder({
+      name: folder.name,
+      description: folder.description || ""
+    });
+    setShowEditFolderDialog(true);
   };
 
   // Navigation functions
-  const navigateToFolder = async (folderId: string) => {
-    try {
-      const folder = await folderService.getFolderById(folderId);
-      if (folder) {
-        setCurrentFolder(folder);
-        
-        // Update path if needed
-        if (folderPath.findIndex(f => f.id === folder.id) >= 0) {
-          // If going back in the path
-          const newPath = folderPath.slice(0, folderPath.findIndex(f => f.id === folder.id) + 1);
-          setFolderPath(newPath);
-        }
-      }
-    } catch (error) {
-      console.error("Error navigating to folder:", error);
+  const navigateToRoot = () => {
+    setCurrentFolder(null);
+    setFolderPath([]);
+    loadItems(null);
+  };
+
+  const navigateToFolder = (folderId: string) => {
+    // Get the folder object from our state
+    const folder = folders.find(f => f.id === folderId);
+    if (!folder) return;
+    
+    // Set as current folder and load its contents
+    setCurrentFolder(folder);
+    loadItems(folderId);
+    
+    // If it's already in our path, we're navigating backwards
+    const existingIndex = folderPath.findIndex(f => f.id === folderId);
+    if (existingIndex >= 0) {
+      setFolderPath(folderPath.slice(0, existingIndex + 1));
+    } else {
+      // Otherwise add it to our path
+      setFolderPath([...folderPath, folder]);
     }
   };
 
   const navigateUp = () => {
-    if (folderPath.length > 1) {
-      // Go to parent folder
-      const parentFolder = folderPath[folderPath.length - 2];
-      setCurrentFolder(parentFolder);
-      setFolderPath(folderPath.slice(0, folderPath.length - 1));
+    if (folderPath.length <= 1) {
+      navigateToRoot();
     } else {
-      // Go to root
-      setCurrentFolder(null);
-      setFolderPath([]);
+      const parentFolder = folderPath[folderPath.length - 2];
+      navigateToFolder(parentFolder.id);
     }
   };
 
-  const navigateToRoot = () => {
-    setCurrentFolder(null);
-    setFolderPath([]);
+  // File upload functions
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    setFileUploading(true);
+    
+    try {
+      const uploadedFilesArray: AssetFile[] = [];
+      
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const uploadedFile = await assetService.uploadFile(file);
+        uploadedFilesArray.push(uploadedFile);
+      }
+      
+      setUploadedFiles([...uploadedFiles, ...uploadedFilesArray]);
+    } catch (error) {
+      console.error("Error uploading files:", error);
+      // You could add a toast notification here
+    } finally {
+      setFileUploading(false);
+      
+      // Reset the input so the same file can be selected again if needed
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+  
+  const handleEditFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    setFileUploading(true);
+    
+    try {
+      const uploadedFilesArray: AssetFile[] = [];
+      
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const uploadedFile = await assetService.uploadFile(file);
+        uploadedFilesArray.push(uploadedFile);
+      }
+      
+      setEditUploadedFiles([...editUploadedFiles, ...uploadedFilesArray]);
+    } catch (error) {
+      console.error("Error uploading files:", error);
+      // You could add a toast notification here
+    } finally {
+      setFileUploading(false);
+      
+      // Reset the input so the same file can be selected again if needed
+      if (editFileInputRef.current) {
+        editFileInputRef.current.value = '';
+      }
+    }
+  };
+  
+  const handleRemoveFile = (index: number) => {
+    const newFiles = [...uploadedFiles];
+    newFiles.splice(index, 1);
+    setUploadedFiles(newFiles);
+  };
+  
+  const handleRemoveEditFile = (index: number) => {
+    const newFiles = [...editUploadedFiles];
+    newFiles.splice(index, 1);
+    setEditUploadedFiles(newFiles);
   };
 
-  // Handle drag and drop
-  const handleDrop = async (itemId: string, itemType: string, targetFolderId?: string) => {
+  // Load items function
+  const loadItems = async (folderId: string | null) => {
     setLoading(true);
     try {
-      if (itemType === ItemTypes.ASSET) {
-        // Move asset to target folder (or root if targetFolderId is undefined)
-        await assetService.moveAssetToFolder(itemId, targetFolderId || null);
-      } else if (itemType === ItemTypes.FOLDER) {
-        // Move folder to target folder (or root if targetFolderId is undefined)
-        await folderService.updateFolder(itemId, {
-          parentId: targetFolderId || undefined
-        });
+      // Load assets for the current folder
+      const assetsData = await assetService.getAssets({ folderId });
+      setAssets(assetsData || []);
+      
+      // Load folders for the current folder
+      const foldersData = await folderService.getFolders(folderId);
+      setFolders(foldersData || []);
+      
+      // If we're in a subfolder, load the folder path
+      if (folderId) {
+        await loadFolderPath(folderId);
       }
-      // Reload current folder content
-      await loadFolderContent();
     } catch (error) {
-      console.error(`Error moving ${itemType} to folder:`, error);
+      console.error('Error loading items:', error);
     } finally {
       setLoading(false);
     }
   };
+  
+  // Load folder path (breadcrumb navigation)
+  const loadFolderPath = async (folderId: string) => {
+    try {
+      const path: Folder[] = [];
+      let currentId = folderId;
+      
+      while (currentId) {
+        const folder = await folderService.getFolderById(currentId);
+        if (!folder) break;
+        
+        path.unshift(folder);
+        if (!folder.parentId) break;
+        currentId = folder.parentId;
+      }
+      
+      setFolderPath(path);
+      if (path.length > 0) {
+        setCurrentFolder(path[path.length - 1]);
+      }
+    } catch (error) {
+      console.error('Error loading folder path:', error);
+    }
+  };
 
-  // Create folder/asset handlers
+  // Handle asset/folder operations
+  const prepareCreateAsset = () => {
+    setNewAsset({
+      name: "",
+      type: "document",
+      description: "",
+      category: "",
+      tags: "",
+      isPublic: true,
+      usageStartDate: "",
+      usageEndDate: "",
+      fileUrl: ""
+    });
+    setUploadedFiles([]);
+    setShowAddAssetDialog(true);
+  };
+  
+  const handleCreateAsset = async () => {
+    if (!newAsset.name || !newAsset.type) return;
+    
+    setLoading(true);
+    try {
+      // Process tags if provided
+      const tags = newAsset.tags ? newAsset.tags.split(',').map(t => t.trim()) : [];
+      
+      await assetService.createAsset({
+        name: newAsset.name,
+        type: newAsset.type,
+        description: newAsset.description,
+        category: newAsset.category,
+        tags,
+        isPublic: newAsset.isPublic,
+        usageStartDate: newAsset.usageStartDate,
+        usageEndDate: newAsset.usageEndDate,
+        fileUrl: newAsset.fileUrl,
+        files: uploadedFiles,
+        folderId: currentFolder?.id || null
+      });
+      
+      setShowAddAssetDialog(false);
+      loadItems(currentFolder?.id || null);
+    } catch (error) {
+      console.error('Error creating asset:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const prepareCreateFolder = () => {
+    setNewFolder({
+      name: "",
+      description: ""
+    });
+    setShowAddFolderDialog(true);
+  };
+  
   const handleCreateFolder = async () => {
     if (!newFolder.name) return;
     
@@ -470,143 +708,139 @@ export default function AssetsPage() {
       await folderService.createFolder({
         name: newFolder.name,
         description: newFolder.description,
-        parentId: currentFolder?.id || undefined,
+        parentId: currentFolder?.id || null
       });
       
-      setNewFolder({ name: "", description: "" });
       setShowAddFolderDialog(false);
-      await loadFolderContent();
+      loadItems(currentFolder?.id || null);
     } catch (error) {
-      console.error("Error creating folder:", error);
+      console.error('Error creating folder:', error);
     } finally {
       setLoading(false);
     }
   };
-
-  const handleCreateAsset = async () => {
-    if (!newAsset.name || !newAsset.type) {
-      alert("Asset name and type are required");
+  
+  const prepareEditAsset = async (asset: AssetWithMeta) => {
+    // If the _expandView flag is set, show the expand dialog instead of edit
+    if (asset._expandView) {
+      setExpandedAsset(asset);
+      setShowExpandDialog(true);
       return;
     }
     
-    setLoading(true);
-    try {
-      const tagsArray = newAsset.tags
-        ? newAsset.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
-        : [];
-        
-      await assetService.createAsset({
-        name: newAsset.name,
-        type: newAsset.type,
-        description: newAsset.description || undefined,
-        category: newAsset.category || undefined,
-        tags: tagsArray,
-        isPublic: newAsset.isPublic,
-        usageStartDate: newAsset.usageStartDate || undefined,
-        usageEndDate: newAsset.usageEndDate || undefined,
-        folderId: currentFolder?.id || undefined,
-      });
-      
-      // Reset form and refresh
-      setNewAsset({
-        name: "",
-        type: "",
-        description: "",
-        category: "",
-        tags: "",
-        isPublic: true,
-        usageStartDate: "",
-        usageEndDate: "",
-      });
-      setShowAddAssetDialog(false);
-      await loadFolderContent();
-    } catch (error) {
-      console.error("Error creating asset:", error);
-    } finally {
-      setLoading(false);
-    }
+    // Otherwise, show the edit dialog
+    setNewAsset({
+      name: asset.name,
+      type: asset.type,
+      description: asset.description || "",
+      category: asset.category || "",
+      tags: asset.tags ? asset.tags.join(', ') : "",
+      isPublic: asset.isPublic,
+      usageStartDate: asset.usageStartDate || "",
+      usageEndDate: asset.usageEndDate || "",
+      fileUrl: asset.fileUrl || ""
+    });
+    
+    // Set the uploaded files for editing
+    setEditUploadedFiles(asset.files || []);
+    setCurrentEditingAsset(asset);
+    setShowEditAssetDialog(true);
   };
-
-  // Edit handlers
+  
   const handleEditAsset = async () => {
-    if (!editingAsset || !newAsset.name || !newAsset.type) {
-      alert("Asset name and type are required");
-      return;
-    }
+    if (!newAsset.name || !newAsset.type) return;
     
     setLoading(true);
     try {
-      const tagsArray = newAsset.tags
-        ? newAsset.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
-        : [];
-        
-      await assetService.updateAsset(editingAsset.id, {
+      // Process tags if provided
+      const tags = newAsset.tags ? newAsset.tags.split(',').map(t => t.trim()) : [];
+      
+      // Get current asset from expanded view
+      const assetId = currentEditingAsset?.id;
+      
+      if (!assetId) {
+        console.error('Cannot update asset: No asset ID found');
+        return;
+      }
+      
+      // Update the asset with the new values
+      await assetService.updateAsset(assetId, {
         name: newAsset.name,
         type: newAsset.type,
-        description: newAsset.description || undefined,
-        category: newAsset.category || undefined,
-        tags: tagsArray,
+        description: newAsset.description,
+        category: newAsset.category,
+        tags,
         isPublic: newAsset.isPublic,
-        usageStartDate: newAsset.usageStartDate || undefined,
-        usageEndDate: newAsset.usageEndDate || undefined,
+        usageStartDate: newAsset.usageStartDate,
+        usageEndDate: newAsset.usageEndDate,
+        fileUrl: newAsset.fileUrl,
+        files: editUploadedFiles
       });
       
-      setEditingAsset(null);
+      // Update local state to reflect changes
+      setAssets(assets.map(asset => 
+        asset.id === assetId 
+          ? { 
+              ...asset, 
+              name: newAsset.name,
+              type: newAsset.type,
+              description: newAsset.description,
+              category: newAsset.category,
+              tags,
+              isPublic: newAsset.isPublic,
+              usageStartDate: newAsset.usageStartDate,
+              usageEndDate: newAsset.usageEndDate,
+              fileUrl: newAsset.fileUrl,
+              files: editUploadedFiles
+            }
+          : asset
+      ));
+      
       setShowEditAssetDialog(false);
-      await loadFolderContent();
+      setCurrentEditingAsset(null);
     } catch (error) {
-      console.error("Error updating asset:", error);
+      console.error('Error updating asset:', error);
     } finally {
       setLoading(false);
     }
   };
-
+  
   const handleEditFolder = async () => {
-    if (!editingFolder || !newFolder.name) {
-      alert("Folder name is required");
-      return;
-    }
+    if (!newFolder.name) return;
     
     setLoading(true);
     try {
-      await folderService.updateFolder(editingFolder.id, {
-        name: newFolder.name,
-        description: newFolder.description,
-      });
-      
-      setEditingFolder(null);
-      setShowEditFolderDialog(false);
-      await loadFolderContent();
-      
-      // Update folder path if the edited folder is in the path
-      if (folderPath.some(f => f.id === editingFolder.id)) {
-        const updatedPath = folderPath.map(f => 
-          f.id === editingFolder.id ? {...f, name: newFolder.name, description: newFolder.description} : f
-        );
-        setFolderPath(updatedPath);
-      }
-      
-      // Update current folder if it's the one being edited
-      if (currentFolder && currentFolder.id === editingFolder.id) {
-        setCurrentFolder({
-          ...currentFolder,
+      // Implement folder edit logic
+      if (currentEditingFolder) {
+        await folderService.updateFolder(currentEditingFolder.id, {
           name: newFolder.name,
-          description: newFolder.description,
+          description: newFolder.description
         });
+        
+        // Update local state to reflect changes
+        const updatedFolders = folders.map(folder => 
+          folder.id === currentEditingFolder.id 
+            ? { ...folder, name: newFolder.name, description: newFolder.description }
+            : folder
+        );
+        setFolders(updatedFolders);
+        
+        // Close dialog and clear form
+        setShowEditFolderDialog(false);
+        setCurrentEditingFolder(null);
       }
     } catch (error) {
-      console.error("Error updating folder:", error);
+      console.error('Error updating folder:', error);
     } finally {
       setLoading(false);
     }
   };
-
-  // Delete handlers
+  
   const prepareDelete = (id: string, type: string, name: string) => {
     setDeletingItem({ id, type, name });
     setShowDeleteDialog(true);
   };
-
+  
   const handleDelete = async () => {
     if (!deletingItem) return;
     
@@ -619,46 +853,127 @@ export default function AssetsPage() {
       }
       
       setShowDeleteDialog(false);
-      setDeletingItem(null);
-      await loadFolderContent();
+      loadItems(currentFolder?.id || null);
     } catch (error) {
       console.error(`Error deleting ${deletingItem.type}:`, error);
     } finally {
       setLoading(false);
     }
   };
-
-  // Prepare edit handlers
-  const prepareEditAsset = (asset: Asset) => {
-    setEditingAsset(asset);
-    setNewAsset({
-      name: asset.name,
-      type: asset.type,
-      description: asset.description || "",
-      category: asset.category || "",
-      tags: asset.tags ? asset.tags.join(", ") : "",
-      isPublic: asset.isPublic,
-      usageStartDate: asset.usageStartDate || "",
-      usageEndDate: asset.usageEndDate || "",
-    });
-    setShowEditAssetDialog(true);
+  
+  const handleDrop = async (itemId: string, itemType: string, targetId?: string) => {
+    // Save the item before removing it from the UI, in case we need to restore it on error
+    const draggedAsset = assets.find(asset => asset.id === itemId);
+    const draggedFolder = folders.find(folder => folder.id === itemId);
+    
+    // Track the source folder ID to handle reloading correctly
+    const sourceFolder = currentFolder?.id;
+    
+    try {
+      setLoading(true);
+      
+      // First, update the local state to immediately reflect the change
+      if (itemType === ItemTypes.ASSET) {
+        // Remove the asset from the current view
+        setAssets(prevAssets => prevAssets.filter(asset => asset.id !== itemId));
+        
+        // Make the backend API call to update the database
+        await assetService.moveAssetToFolder(itemId, targetId || null);
+      } else if (itemType === ItemTypes.FOLDER) {
+        // Remove the folder from the current view
+        setFolders(prevFolders => prevFolders.filter(folder => folder.id !== itemId));
+        
+        // Make the backend API call to update the database
+        await folderService.updateFolder(itemId, { parentId: targetId || null });
+      }
+      
+      // Determine if we need to refresh the target location
+      if (targetId === currentFolder?.id) {
+        // We're in the target folder, reload to show the newly added item
+        await loadItems(currentFolder?.id);
+      } else if (targetId === null && currentFolder === null) {
+        // We're at root and the item was moved to root, reload to show the item
+        await loadItems(null);
+      }
+      
+      // Set showRootDrop to true temporarily when in a folder to indicate drag capability
+      if (currentFolder) {
+        setShowRootDrop(true);
+        setTimeout(() => setShowRootDrop(false), 2000);
+      }
+    } catch (error) {
+      console.error(`Error moving ${itemType}:`, error);
+      
+      // On error, restore the item to the UI
+      if (itemType === ItemTypes.ASSET && draggedAsset) {
+        setAssets(prevAssets => [...prevAssets, draggedAsset]);
+      } else if (itemType === ItemTypes.FOLDER && draggedFolder) {
+        setFolders(prevFolders => [...prevFolders, draggedFolder]);
+      }
+      
+      // Refresh the current view to ensure consistency
+      await loadItems(sourceFolder);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const prepareEditFolder = (folder: Folder) => {
-    setEditingFolder(folder);
-    setNewFolder({
-      name: folder.name,
-      description: folder.description || "",
-    });
-    setShowEditFolderDialog(true);
+  // Add dedicated function for expanding assets
+  const handleExpandAsset = async (asset: AssetWithMeta) => {
+    try {
+      setLoading(true);
+      // Clear any expanded folder to avoid mixed content display
+      setExpandedFolder(null);
+      
+      // Fetch the latest data for this asset to ensure we have the most up-to-date information
+      const freshAsset = await assetService.getAssetById(asset.id);
+      if (freshAsset) {
+        setExpandedAsset(freshAsset as AssetWithMeta);
+        setShowExpandDialog(true);
+      } else {
+        // Fallback to the current asset data if fetch fails
+        setExpandedAsset(asset);
+        setShowExpandDialog(true);
+        console.warn('Could not fetch fresh asset data, using existing data');
+      }
+    } catch (error) {
+      console.error('Error fetching asset data for expand view:', error);
+      // Still open dialog with existing data as fallback
+      setExpandedAsset(asset);
+      setShowExpandDialog(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Handle expand folder
-  const handleExpandFolder = (folder: Folder, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent navigation to the folder
+  const handleExpandFolder = (folder: Folder) => {
+    // Clear any expanded asset to avoid mixed content display
+    setExpandedAsset(null);
     setExpandedFolder(folder);
     setShowExpandDialog(true);
   };
+
+  // Handle file preview
+  const handlePreviewFile = (file: AssetFile) => {
+    setPreviewFile(file);
+    setShowFilePreview(true);
+  };
+
+  // In expanded asset dialog, add preview capability for files
+  const handlePreviewFileFromExpanded = (file: AssetFile) => {
+    // Close the expanded view, then show the file preview
+    setShowExpandDialog(false);
+    // Small timeout to allow the dialog to close smoothly
+    setTimeout(() => {
+      setPreviewFile(file);
+      setShowFilePreview(true);
+    }, 100);
+  };
+  
+  // Load items on component mount
+  useEffect(() => {
+    loadItems(null);
+  }, []);
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -682,7 +997,7 @@ export default function AssetsPage() {
             </div>
             
             {/* Folder breadcrumb navigation */}
-            <div className="flex items-center gap-1 text-sm mb-4">
+            <div className="flex items-center gap-1 text-sm mb-4 flex-wrap">
               <Button
                 variant="ghost"
                 size="sm"
@@ -780,6 +1095,8 @@ export default function AssetsPage() {
                 asset={asset}
                 onEdit={prepareEditAsset}
                 onDelete={(id) => prepareDelete(id, ItemTypes.ASSET, asset.name)}
+                onPreviewFile={handlePreviewFile}
+                onExpand={handleExpandAsset}
               />
             ))}
           </div>
@@ -887,6 +1204,34 @@ export default function AssetsPage() {
                   />
                 </div>
               </div>
+              <div className="grid gap-2">
+                <Label htmlFor="fileUpload">Upload Files</Label>
+                <input
+                  id="fileUpload"
+                  type="file"
+                  multiple
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={fileUploading}
+                >
+                  {fileUploading ? "Uploading..." : "Choose Files"}
+                </Button>
+                <div className="mt-2 space-y-1">
+                  {uploadedFiles.map((file, index) => (
+                    <div key={index} className="text-sm flex items-center justify-between">
+                      <span>{file.name}</span>
+                      <Button variant="ghost" size="icon" onClick={() => handleRemoveFile(index)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowAddAssetDialog(false)}>Cancel</Button>
@@ -939,111 +1284,139 @@ export default function AssetsPage() {
         
         {/* Edit Asset Dialog */}
         <Dialog open={showEditAssetDialog} onOpenChange={setShowEditAssetDialog}>
-          <DialogContent className="sm:max-w-[525px]">
-            <DialogHeader>
+          <DialogContent className="sm:max-w-[525px] max-h-[80vh] p-0 overflow-hidden">
+            <DialogHeader className="px-6 pt-6 pb-2">
               <DialogTitle>Edit Asset</DialogTitle>
               <DialogDescription>
                 Update the details of your asset.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              {/* Same form fields as Create Asset Dialog */}
-              <div className="grid gap-2">
-                <Label htmlFor="edit-name">Asset Name*</Label>
-                <Input
-                  id="edit-name"
-                  value={newAsset.name}
-                  onChange={(e) => setNewAsset({ ...newAsset, name: e.target.value })}
-                  placeholder="Enter asset name"
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-type">Asset Type*</Label>
-                <Select
-                  value={newAsset.type}
-                  onValueChange={(value) => setNewAsset({ ...newAsset, type: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select asset type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DEFAULT_ASSET_TYPES.map((type) => (
-                      <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              {/* ... other fields as in create dialog ... */}
-              <div className="grid gap-2">
-                <Label htmlFor="edit-description">Description</Label>
-                <Textarea
-                  id="edit-description"
-                  value={newAsset.description}
-                  onChange={(e) => setNewAsset({ ...newAsset, description: e.target.value })}
-                  placeholder="Enter asset description"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-category">Category</Label>
-                <Select
-                  value={newAsset.category}
-                  onValueChange={(value) => setNewAsset({ ...newAsset, category: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DEFAULT_CATEGORIES.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-tags">Tags (comma separated)</Label>
-                <Input
-                  id="edit-tags"
-                  value={newAsset.tags}
-                  onChange={(e) => setNewAsset({ ...newAsset, tags: e.target.value })}
-                  placeholder="design, logo, marketing"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox 
-                  id="edit-isPublic" 
-                  checked={newAsset.isPublic}
-                  onCheckedChange={(checked) => 
-                    setNewAsset({ ...newAsset, isPublic: Boolean(checked) })
-                  }
-                />
-                <Label htmlFor="edit-isPublic">
-                  Allow others to use this asset
-                </Label>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+            <ScrollArea className="max-h-[calc(80vh-8rem)]">
+              <div className="grid gap-4 py-4 px-6">
+                {/* Same form fields as Create Asset Dialog */}
                 <div className="grid gap-2">
-                  <Label htmlFor="edit-usageStartDate">Usage Start Date</Label>
+                  <Label htmlFor="edit-name">Asset Name*</Label>
                   <Input
-                    id="edit-usageStartDate"
-                    type="date"
-                    value={newAsset.usageStartDate}
-                    onChange={(e) => setNewAsset({ ...newAsset, usageStartDate: e.target.value })}
+                    id="edit-name"
+                    value={newAsset.name}
+                    onChange={(e) => setNewAsset({ ...newAsset, name: e.target.value })}
+                    placeholder="Enter asset name"
+                    required
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="edit-usageEndDate">Usage End Date</Label>
-                  <Input
-                    id="edit-usageEndDate"
-                    type="date"
-                    value={newAsset.usageEndDate}
-                    onChange={(e) => setNewAsset({ ...newAsset, usageEndDate: e.target.value })}
+                  <Label htmlFor="edit-type">Asset Type*</Label>
+                  <Select
+                    value={newAsset.type}
+                    onValueChange={(value) => setNewAsset({ ...newAsset, type: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select asset type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DEFAULT_ASSET_TYPES.map((type) => (
+                        <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-description">Description</Label>
+                  <Textarea
+                    id="edit-description"
+                    value={newAsset.description}
+                    onChange={(e) => setNewAsset({ ...newAsset, description: e.target.value })}
+                    placeholder="Enter asset description"
                   />
                 </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-category">Category</Label>
+                  <Select
+                    value={newAsset.category}
+                    onValueChange={(value) => setNewAsset({ ...newAsset, category: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DEFAULT_CATEGORIES.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-tags">Tags (comma separated)</Label>
+                  <Input
+                    id="edit-tags"
+                    value={newAsset.tags}
+                    onChange={(e) => setNewAsset({ ...newAsset, tags: e.target.value })}
+                    placeholder="design, logo, marketing"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox 
+                    id="edit-isPublic" 
+                    checked={newAsset.isPublic}
+                    onCheckedChange={(checked) => 
+                      setNewAsset({ ...newAsset, isPublic: Boolean(checked) })
+                    }
+                  />
+                  <Label htmlFor="edit-isPublic">
+                    Allow others to use this asset
+                  </Label>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-usageStartDate">Usage Start Date</Label>
+                    <Input
+                      id="edit-usageStartDate"
+                      type="date"
+                      value={newAsset.usageStartDate}
+                      onChange={(e) => setNewAsset({ ...newAsset, usageStartDate: e.target.value })}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-usageEndDate">Usage End Date</Label>
+                    <Input
+                      id="edit-usageEndDate"
+                      type="date"
+                      value={newAsset.usageEndDate}
+                      onChange={(e) => setNewAsset({ ...newAsset, usageEndDate: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-fileUpload">Upload Files</Label>
+                  <input
+                    id="edit-fileUpload"
+                    type="file"
+                    multiple
+                    ref={editFileInputRef}
+                    onChange={handleEditFileUpload}
+                    className="hidden"
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => editFileInputRef.current?.click()}
+                    disabled={fileUploading}
+                  >
+                    {fileUploading ? "Uploading..." : "Choose Files"}
+                  </Button>
+                  <div className="mt-2 space-y-1">
+                    {editUploadedFiles.map((file, index) => (
+                      <div key={index} className="text-sm flex items-center justify-between">
+                        <span>{file.name}</span>
+                        <Button variant="ghost" size="icon" onClick={() => handleRemoveEditFile(index)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
-            <DialogFooter>
+            </ScrollArea>
+            <DialogFooter className="px-6 py-4 border-t">
               <Button variant="outline" onClick={() => setShowEditAssetDialog(false)}>Cancel</Button>
               <Button onClick={handleEditAsset} disabled={loading}>
                 {loading ? "Updating..." : "Update Asset"}
@@ -1142,21 +1515,183 @@ export default function AssetsPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Expand Folder Dialog */}
+        {/* Expand Folder/Asset Dialog */}
         <Dialog open={showExpandDialog} onOpenChange={setShowExpandDialog}>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Folder Details</DialogTitle>
+          <DialogContent className="sm:max-w-[550px] max-h-[80vh] p-0 overflow-hidden">
+            <DialogHeader className="px-6 pt-6 pb-2">
+              <DialogTitle className="truncate">
+                {expandedFolder ? 'Folder: ' : 'Asset: '}
+                {truncateText(expandedFolder?.name || expandedAsset?.name, 40)}
+              </DialogTitle>
             </DialogHeader>
-            <div className="py-4">
-              <p><strong>Name:</strong> {expandedFolder?.name}</p>
-              <p><strong>Description:</strong> {expandedFolder?.description || "No description provided."}</p>
-            </div>
-            <DialogFooter>
-              <Button onClick={() => setShowExpandDialog(false)}>Close</Button>
+            <ScrollArea className="max-h-[calc(80vh-8rem)] px-6">
+              <div className="py-4 space-y-4">
+                {/* Folder details */}
+                {expandedFolder && (
+                  <>
+                    {expandedFolder.description && (
+                      <>
+                        <h3 className="font-medium">Description</h3>
+                        <p className="whitespace-pre-wrap break-words">{expandedFolder.description}</p>
+                      </>
+                    )}
+                  </>
+                )}
+
+                {/* Asset details */}
+                {expandedAsset && (
+                  <>
+                    {expandedAsset.description && (
+                      <>
+                        <h3 className="font-medium">Description</h3>
+                        <p className="whitespace-pre-wrap break-words">{expandedAsset.description}</p>
+                      </>
+                    )}
+                    {expandedAsset.category && (
+                      <div>
+                        <h3 className="font-medium">Category</h3>
+                        <p>{expandedAsset.category}</p>
+                      </div>
+                    )}
+                    {expandedAsset.tags && expandedAsset.tags.length > 0 && (
+                      <div>
+                        <h3 className="font-medium">Tags</h3>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {expandedAsset.tags.map((tag, i) => (
+                            <span key={i} className="bg-muted px-2 py-1 text-sm rounded">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <h3 className="font-medium">Type</h3>
+                        <p className="text-muted-foreground capitalize">{expandedAsset.type}</p>
+                      </div>
+                      <div>
+                        <h3 className="font-medium">Visibility</h3>
+                        <p className={expandedAsset.isPublic ? "text-green-600 dark:text-green-400" : "text-amber-600 dark:text-amber-400"}>
+                          {expandedAsset.isPublic ? "Public" : "Private"}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Usage dates section */}
+                    {(expandedAsset.usageStartDate || expandedAsset.usageEndDate) && (
+                      <div className="grid grid-cols-2 gap-4">
+                        {expandedAsset.usageStartDate && (
+                          <div>
+                            <h3 className="font-medium">Usage Start Date</h3>
+                            <p className="text-muted-foreground">
+                              {new Date(expandedAsset.usageStartDate).toLocaleDateString()}
+                            </p>
+                          </div>
+                        )}
+                        {expandedAsset.usageEndDate && (
+                          <div>
+                            <h3 className="font-medium">Usage End Date</h3>
+                            <p className="text-muted-foreground">
+                              {new Date(expandedAsset.usageEndDate).toLocaleDateString()}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* File attachments */}
+                    {(expandedAsset.fileUrl || (expandedAsset.files && expandedAsset.files.length > 0)) && (
+                      <div>
+                        <h3 className="font-medium">Files</h3>
+                        <div className="space-y-2 mt-2">
+                          {/* Legacy file URL */}
+                          {expandedAsset.fileUrl && (
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <FileText className="h-4 w-4" />
+                                <a 
+                                  href={expandedAsset.fileUrl} 
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-primary hover:underline"
+                                >
+                                  Attached file
+                                </a>
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handlePreviewFileFromExpanded({
+                                  url: expandedAsset.fileUrl!, 
+                                  name: "Attached file", 
+                                  type: "", 
+                                  size: 0
+                                })}
+                              >
+                                <Eye className="mr-2 h-4 w-4" />
+                                Preview
+                              </Button>
+                            </div>
+                          )}
+
+                          {/* Multiple files */}
+                          {expandedAsset.files && expandedAsset.files.length > 0 ? (
+                            expandedAsset.files.map((file, index) => (
+                              <div key={index} className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <FileText className="h-4 w-4" />
+                                  <a 
+                                    href={file.url} 
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-primary hover:underline"
+                                  >
+                                    {file.name || `File ${index + 1}`}
+                                  </a>
+                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handlePreviewFileFromExpanded(file)}
+                                >
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  Preview
+                                </Button>
+                              </div>
+                            ))
+                          ) : !expandedAsset.fileUrl && (
+                            <p className="text-muted-foreground">No files attached</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </ScrollArea>
+            <DialogFooter className="px-6 py-4 border-t">
+              <Button onClick={() => {
+                setShowExpandDialog(false);
+                setExpandedFolder(null);
+                setExpandedAsset(null);
+              }}>
+                Close
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* File Preview Dialog */}
+        <FilePreview
+          file={previewFile}
+          isOpen={showFilePreview}
+          onClose={() => {
+            setShowFilePreview(false);
+            setPreviewFile(null);
+          }}
+        />
       </div>
     </DndProvider>
   );

@@ -1,6 +1,6 @@
 // src/lib/database.ts
 import { supabase } from './supabase';
-import { Product, Category, Message, DatabaseUser, Folder, Asset } from '@/types/database';
+import { Product, Category, Message, DatabaseUser, Folder, Asset, MessageAttachment, BlockedUser } from '@/types/database';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '@/types/database';
 
@@ -349,8 +349,8 @@ export const productService = {
 
 // Asset operations
 export const assetService = {
-  // Get all assets (with optional filtering)
-  async getAssets(filters: {
+  // Get all assets with pagination
+  async getAssetsWithPagination(filters: {
     keyword?: string;
     category?: string;
     tags?: string[];
@@ -359,10 +359,18 @@ export const assetService = {
     isPublicOnly?: boolean;
     folderId?: string;
     type?: string;
+    page?: number;
+    pageSize?: number;
   } = {}) {
     try {
       const supabase = getSupabase();
       
+      // Default pagination values
+      const page = filters.page || 1;
+      const pageSize = filters.pageSize || 12;
+      const startIndex = (page - 1) * pageSize;
+      
+      // Build query for filtered assets
       let query = supabase
         .from('assets')
         .select(`
@@ -376,12 +384,14 @@ export const assetService = {
           usage_start_date, 
           usage_end_date,
           file_url, 
+          files,
           created_at, 
           user_id,
           folder_id, 
           users (name, email)
-        `);
+        `, { count: 'exact' });  // Add count to get total number of matching records
       
+      // Apply filters
       if (filters.keyword) {
         query = query.or(`name.ilike.%${filters.keyword}%,description.ilike.%${filters.keyword}%,tags.cs.{${filters.keyword}}`);
       }
@@ -415,20 +425,38 @@ export const assetService = {
         query = query.eq('folder_id', filters.folderId);
       }
       
-      const { data, error } = await query.order('created_at', { ascending: false });
+      // Apply pagination
+      const { data, error, count } = await query
+        .order('created_at', { ascending: false })
+        .range(startIndex, startIndex + pageSize - 1);
       
       if (error) {
-        console.error('Error fetching assets:', error.message, error.details, error.hint);
+        console.error('Error fetching paginated assets:', error.message, error.details, error.hint);
         throw error;
       }
       
       // Transform the data to match our Asset type
-      return data.map((item: any) => {
+      const items = data.map((item: any) => {
         // Get user details safely with proper type handling
         const userData = item.users || {};
         // Check if userData is an object and properly access properties
         const userName = userData && typeof userData === 'object' ? userData.name : undefined;
         const userEmail = userData && typeof userData === 'object' ? userData.email : undefined;
+        
+        // Process files array if available
+        let files = undefined;
+        if (item.files) {
+          try {
+            // If files is a string (JSON), parse it
+            if (typeof item.files === 'string') {
+              files = JSON.parse(item.files);
+            } else if (Array.isArray(item.files)) {
+              files = item.files;
+            }
+          } catch (e) {
+            console.error('Error parsing files JSON:', e);
+          }
+        }
         
         return {
           id: item.id,
@@ -440,7 +468,8 @@ export const assetService = {
           isPublic: item.is_public,
           usageStartDate: item.usage_start_date,
           usageEndDate: item.usage_end_date,
-          fileUrl: item.file_url,
+          fileUrl: item.file_url, // Legacy file URL
+          files: files, // New multiple files
           createdAt: item.created_at,
           userId: item.user_id,
           folderId: item.folder_id,
@@ -449,12 +478,38 @@ export const assetService = {
           users: userData
         };
       }) as Asset[];
+      
+      return {
+        items,
+        total: count || 0,
+        page,
+        pageSize,
+        pageCount: Math.ceil((count || 0) / pageSize)
+      };
     } catch (error) {
-      console.error('Error in getAssets:', error instanceof Error ? error.message : String(error));
-      return [];
+      console.error('Error in getAssetsWithPagination:', error instanceof Error ? error.message : String(error));
+      return { items: [], total: 0, page: 1, pageSize: 12, pageCount: 0 };
     }
   },
   
+  // Get all assets (with optional filtering)
+  async getAssets(filters: {
+    keyword?: string;
+    category?: string;
+    tags?: string[];
+    startDate?: string;
+    endDate?: string;
+    isPublicOnly?: boolean;
+    folderId?: string;
+    type?: string;
+    page?: number;
+    pageSize?: number;
+  } = {}) {
+    // For backwards compatibility, use the pagination method and return just the items
+    const result = await this.getAssetsWithPagination(filters);
+    return result.items;
+  },
+
   // Get an asset by ID
   async getAssetById(id: string) {
     try {
@@ -472,7 +527,8 @@ export const assetService = {
           is_public, 
           usage_start_date, 
           usage_end_date,
-          file_url, 
+          file_url,
+          files,
           created_at, 
           user_id, 
           folder_id,
@@ -501,6 +557,21 @@ export const assetService = {
           return undefined;
         };
         
+        // Process files array if available
+        let files = undefined;
+        if (data.files) {
+          try {
+            // If files is a string (JSON), parse it
+            if (typeof data.files === 'string') {
+              files = JSON.parse(data.files);
+            } else if (Array.isArray(data.files)) {
+              files = data.files;
+            }
+          } catch (e) {
+            console.error('Error parsing files JSON:', e);
+          }
+        }
+        
         // Transform the data to match our Asset type
         return {
           id: data.id,
@@ -513,6 +584,7 @@ export const assetService = {
           usageStartDate: data.usage_start_date ?? undefined,
           usageEndDate: data.usage_end_date ?? undefined,
           fileUrl: data.file_url ?? undefined,
+          files: files,
           createdAt: data.created_at,
           userId: data.user_id,
           folderId: data.folder_id ?? undefined,
@@ -542,6 +614,12 @@ export const assetService = {
       if (!user) {
         throw new Error('User not authenticated');
       }
+
+      // Process files data - ensure it's stored as a proper JSON string if provided
+      let filesData = null;
+      if (asset.files && Array.isArray(asset.files) && asset.files.length > 0) {
+        filesData = asset.files;
+      }
       
       const { data, error } = await supabase
         .from('assets')
@@ -555,6 +633,7 @@ export const assetService = {
           usage_start_date: asset.usageStartDate || null,
           usage_end_date: asset.usageEndDate || null,
           file_url: asset.fileUrl || null,
+          files: filesData,
           folder_id: asset.folderId || null,
           user_id: user.id
         })
@@ -564,6 +643,21 @@ export const assetService = {
       if (error) {
         console.error('Error creating asset:', error);
         throw error;
+      }
+      
+      // Process files array if available in the response
+      let files = undefined;
+      if (data.files) {
+        try {
+          // If files is a string (JSON), parse it
+          if (typeof data.files === 'string') {
+            files = JSON.parse(data.files);
+          } else if (Array.isArray(data.files)) {
+            files = data.files;
+          }
+        } catch (e) {
+          console.error('Error parsing files JSON:', e);
+        }
       }
       
       // Transform the data to match our Asset type
@@ -578,6 +672,7 @@ export const assetService = {
         usageStartDate: data.usage_start_date,
         usageEndDate: data.usage_end_date,
         fileUrl: data.file_url,
+        files: files,
         createdAt: data.created_at,
         userId: data.user_id,
         folderId: data.folder_id
@@ -662,6 +757,7 @@ export const assetService = {
       if (updates.usageEndDate !== undefined) supabaseUpdates.usage_end_date = updates.usageEndDate || null;
       if (updates.fileUrl !== undefined) supabaseUpdates.file_url = updates.fileUrl || null;
       if (updates.folderId !== undefined) supabaseUpdates.folder_id = updates.folderId || null;
+      if (updates.files !== undefined) supabaseUpdates.files = updates.files;
       
       const { data, error } = await supabase
         .from('assets')
@@ -673,6 +769,21 @@ export const assetService = {
       if (error) {
         console.error('Error updating asset:', error);
         throw error;
+      }
+      
+      // Process files array if available
+      let files = undefined;
+      if (data.files) {
+        try {
+          // If files is a string (JSON), parse it
+          if (typeof data.files === 'string') {
+            files = JSON.parse(data.files);
+          } else if (Array.isArray(data.files)) {
+            files = data.files;
+          }
+        } catch (e) {
+          console.error('Error parsing files JSON:', e);
+        }
       }
       
       // Transform the data to match our Asset type
@@ -687,6 +798,7 @@ export const assetService = {
         usageStartDate: data.usage_start_date,
         usageEndDate: data.usage_end_date,
         fileUrl: data.file_url,
+        files: files,
         createdAt: data.created_at,
         userId: data.user_id,
         folderId: data.folder_id
@@ -737,6 +849,519 @@ export const assetService = {
       return true;
     } catch (error) {
       console.error('Error in moveAssetToFolder:', error);
+      throw error;
+    }
+  },
+
+  // Upload a file for an asset
+  async uploadFile(file: File): Promise<{ url: string; name: string; type: string; size: number }> {
+    try {
+      const supabase = getSupabase();
+      
+      // Check if user is authenticated
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError) {
+        console.error('Auth error in uploadFile:', authError);
+        throw new Error(`Authentication error: ${authError.message}`);
+      }
+      
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+      
+      // Create a sanitized filename with timestamp
+      const timestamp = Date.now();
+      const fileExt = file.name.split('.').pop();
+      const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const filePath = `assets/${timestamp}-${sanitizedName}`;
+      
+      console.log(`Attempting to upload file to path: ${filePath}`);
+      
+      const { data, error } = await supabase
+        .storage
+        .from('files')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type
+        });
+      
+      if (error) {
+        console.error('Error uploading file:', JSON.stringify(error));
+        throw new Error(`Upload failed: ${error.message}`);
+      }
+      
+      if (!data || !data.path) {
+        console.error('Upload returned no data or path');
+        throw new Error('Upload returned invalid data');
+      }
+      
+      // Get the public URL
+      const { data: urlData } = supabase.storage.from('files').getPublicUrl(data.path);
+      
+      if (!urlData || !urlData.publicUrl) {
+        console.error('Failed to get public URL for file');
+        throw new Error('Could not generate public URL for file');
+      }
+      
+      return {
+        url: urlData.publicUrl,
+        name: file.name,
+        type: file.type,
+        size: file.size
+      };
+    } catch (error) {
+      console.error('Error in uploadFile:', error instanceof Error ? error.message : JSON.stringify(error));
+      throw error;
+    }
+  },
+
+  // Delete a file
+  async deleteFile(fileUrl: string): Promise<boolean> {
+    try {
+      const supabase = getSupabase();
+      
+      // Extract the path from the URL
+      const urlObj = new URL(fileUrl);
+      const pathSegments = urlObj.pathname.split('/');
+      // The last two segments should be 'files' and the actual file path
+      const filePath = pathSegments.slice(-1)[0];
+      
+      const { error } = await supabase
+        .storage
+        .from('files')
+        .remove([`assets/${filePath}`]);
+      
+      if (error) {
+        console.error('Error deleting file:', error);
+        throw error;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error in deleteFile:', error);
+      return false;
+    }
+  }
+};
+
+// Message operations
+export const messageService = {
+  // Get all messages for current user (sent and received)
+  async getUserMessages(): Promise<Message[]> {
+    try {
+      const supabase = getSupabase();
+      
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError) {
+        console.error('Auth error:', authError.message || JSON.stringify(authError));
+        throw new Error(`Authentication error: ${authError.message || 'Unknown auth error'}`);
+      }
+      
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+      
+      // First, get all messages for the current user
+      const { data: messagesData, error: messagesError } = await supabase
+        .from('messages')
+        .select('*')
+        .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
+        .order('created_at', { ascending: false });
+        
+      if (messagesError) {
+        console.error('Error fetching messages:', messagesError.message || JSON.stringify(messagesError));
+        throw new Error(`Failed to fetch messages: ${messagesError.message || 'Unknown database error'}`);
+      }
+      
+      if (!messagesData) return [];
+      
+      // Get list of unique user IDs from the messages
+      const userIds = new Set<string>();
+      messagesData.forEach((msg: any) => {
+        if (msg.sender_id !== user.id) userIds.add(msg.sender_id);
+        if (msg.recipient_id !== user.id) userIds.add(msg.recipient_id);
+      });
+      
+      // Fetch user data for all users involved in conversations
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('id, name, email')
+        .in('id', Array.from(userIds));
+        
+      if (usersError) {
+        console.error('Error fetching users:', usersError);
+        // Continue with message data even if user data fails
+      }
+      
+      // Create a map of user data
+      const userMap = new Map<string, any>();
+      if (usersData) {
+        usersData.forEach(userData => {
+          userMap.set(userData.id, userData);
+        });
+      }
+      
+      // Format and return messages with user data attached
+      return messagesData.map((msg: any) => ({
+        id: msg.id,
+        subject: msg.subject || '',
+        content: msg.content,
+        senderId: msg.sender_id,
+        recipientId: msg.recipient_id,
+        relatedProductId: msg.related_product_id,
+        relatedAssetId: msg.related_asset_id,
+        createdAt: msg.created_at,
+        isRead: msg.is_read,
+        senderName: msg.sender_id !== user.id && userMap.get(msg.sender_id) ? userMap.get(msg.sender_id).name : null,
+        senderEmail: msg.sender_id !== user.id && userMap.get(msg.sender_id) ? userMap.get(msg.sender_id).email : null,
+        recipientName: msg.recipient_id !== user.id && userMap.get(msg.recipient_id) ? userMap.get(msg.recipient_id).name : null,
+        recipientEmail: msg.recipient_id !== user.id && userMap.get(msg.recipient_id) ? userMap.get(msg.recipient_id).email : null
+      }));
+    } catch (error) {
+      console.error('Error in getUserMessages:', error instanceof Error ? error.message : JSON.stringify(error));
+      return [];
+    }
+  },
+  
+  // Get unread messages count for current user
+  async getUnreadMessagesCount(): Promise<number> {
+    try {
+      const supabase = getSupabase();
+      
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError) {
+        console.error('Auth error:', authError);
+        throw authError;
+      }
+      
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+      
+      // Efficiently count unread messages without fetching entire message content
+      const { count, error } = await supabase
+        .from('messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('recipient_id', user.id)
+        .eq('is_read', false);
+      
+      if (error) {
+        console.error('Error counting unread messages:', error);
+        throw error;
+      }
+      
+      return count || 0;
+    } catch (error) {
+      console.error('Error in getUnreadMessagesCount:', error);
+      return 0;
+    }
+  },
+  
+  // Mark a message as read
+  async markAsRead(messageId: string): Promise<boolean> {
+    try {
+      const supabase = getSupabase();
+      
+      const { error } = await supabase
+        .from('messages')
+        .update({ is_read: true })
+        .eq('id', messageId);
+      
+      if (error) {
+        console.error('Error marking message as read:', error);
+        throw error;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error in markAsRead:', error);
+      throw error;
+    }
+  },
+  
+  // Send a new message
+  async sendMessage(messageData: {
+    recipientId: string; 
+    subject?: string; 
+    content: string;
+    attachments?: MessageAttachment[];
+    relatedProductId?: string;
+    relatedAssetId?: string;
+  }): Promise<Message | null> {
+    try {
+      const supabase = getSupabase();
+      
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        console.error('Auth error:', authError);
+        return null;
+      }
+      
+      // Check if the receiver has blocked the sender
+      const { count: blockedCount, error: blockedError } = await supabase
+        .from('blocked_users')
+        .select('*', { count: 'exact', head: true })
+        .eq('blocker_id', messageData.recipientId)
+        .eq('blocked_id', user.id);
+        
+      if (blockedError) {
+        console.error('Error checking if blocked:', blockedError);
+        return null;
+      }
+      
+      if (blockedCount && blockedCount > 0) {
+        console.error('Cannot send message: you are blocked by this user');
+        throw new Error('Cannot send message: you are blocked by this user');
+      }
+      
+      // Create the message
+      const dbMessageData = {
+        sender_id: user.id,
+        recipient_id: messageData.recipientId,
+        subject: messageData.subject || '',
+        content: messageData.content,
+        related_product_id: messageData.relatedProductId || null,
+        related_asset_id: messageData.relatedAssetId || null,
+        created_at: new Date().toISOString(),
+        is_read: false
+      };
+      
+      const { data: messageResult, error: messageError } = await supabase
+        .from('messages')
+        .insert(dbMessageData)
+        .select()
+        .single();
+      
+      if (messageError || !messageResult) {
+        console.error('Error sending message:', messageError);
+        return null;
+      }
+      
+      // Process attachments if any
+      if (messageData.attachments && messageData.attachments.length > 0) {
+        for (const attachment of messageData.attachments) {
+          // Save each attachment association
+          const attachmentData = {
+            message_id: messageResult.id,
+            url: attachment.url,
+            name: attachment.name,
+            type: attachment.type,
+            size: attachment.size
+          };
+          
+          const { error: attachmentError } = await supabase
+            .from('message_attachments')
+            .insert(attachmentData);
+            
+          if (attachmentError) {
+            console.error('Error saving attachment data:', attachmentError);
+            // Continue with other attachments
+          }
+        }
+      }
+      
+      // Return the new message with proper format
+      return this.formatMessage(messageResult);
+    } catch (error) {
+      console.error('Error in sendMessage:', error);
+      return null;
+    }
+  },
+  
+  // Legacy method for backward compatibility 
+  async sendMessageLegacy(receiverId: string, content: string, attachments?: File[]): Promise<Message | null> {
+    return this.sendMessage({
+      recipientId: receiverId,
+      content: content,
+      attachments: []
+    });
+  },
+  
+  async getAttachments(messageId: string): Promise<MessageAttachment[]> {
+    try {
+      const supabase = getSupabase();
+      
+      const { data, error } = await supabase
+        .from('message_attachments')
+        .select('*')
+        .eq('message_id', messageId);
+        
+      if (error || !data) {
+        console.error('Error getting attachments:', error);
+        return [];
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Error in getAttachments:', error);
+      return [];
+    }
+  },
+  
+  async deleteAttachment(attachmentId: string): Promise<boolean> {
+    try {
+      const supabase = getSupabase();
+      
+      // Get the attachment to delete the file
+      const { data: attachment, error: fetchError } = await supabase
+        .from('message_attachments')
+        .select('file_path')
+        .eq('id', attachmentId)
+        .single();
+        
+      if (fetchError || !attachment) {
+        console.error('Error fetching attachment:', fetchError);
+        return false;
+      }
+      
+      // Delete the file from storage
+      const { error: storageError } = await supabase
+        .storage
+        .from('attachments')
+        .remove([attachment.file_path]);
+        
+      if (storageError) {
+        console.error('Error deleting attachment file:', storageError);
+        // Continue to delete the database record even if file removal failed
+      }
+      
+      // Delete the record from the database
+      const { error: deleteError } = await supabase
+        .from('message_attachments')
+        .delete()
+        .eq('id', attachmentId);
+        
+      if (deleteError) {
+        console.error('Error deleting attachment record:', deleteError);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error in deleteAttachment:', error);
+      return false;
+    }
+  },
+
+  // Helper function to format a message
+  formatMessage(messageData: any): Message {
+    return {
+      id: messageData.id,
+      subject: messageData.subject || '',
+      content: messageData.content,
+      senderId: messageData.sender_id,
+      recipientId: messageData.recipient_id,
+      relatedProductId: messageData.related_product_id,
+      relatedAssetId: messageData.related_asset_id,
+      createdAt: messageData.created_at,
+      isRead: messageData.is_read,
+      // These fields might not be available from database directly
+      senderEmail: null,
+      senderName: null,
+      recipientEmail: null,
+      recipientName: null
+    };
+  },
+  
+  // Get messages with attachments
+  async getMessagesWithAttachments(): Promise<Message[]> {
+    try {
+      const supabase = getSupabase();
+      
+      // Get current user
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError) {
+        console.error('Auth error in getMessagesWithAttachments:', authError);
+        return [];
+      }
+      
+      if (!user) {
+        return [];
+      }
+      
+      // Get messages
+      const { data: messagesData, error: messagesError } = await supabase
+        .from('messages')
+        .select(`
+          *,
+          message_attachments(*)
+        `)
+        .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
+        .order('created_at', { ascending: false });
+      
+      if (messagesError) {
+        console.error('Error fetching messages with attachments:', messagesError);
+        return [];
+      }
+      
+      // Format messages with attachments
+      return messagesData.map((msg: any) => ({
+        id: msg.id,
+        subject: msg.subject,
+        content: msg.content,
+        senderId: msg.sender_id,
+        recipientId: msg.recipient_id,
+        relatedProductId: msg.related_product_id,
+        relatedAssetId: msg.related_asset_id,
+        createdAt: msg.created_at,
+        isRead: msg.is_read,
+        attachments: msg.message_attachments.map((att: any) => ({
+          id: att.id,
+          url: att.url,
+          name: att.name,
+          type: att.type,
+          size: att.size,
+          messageId: att.message_id
+        }))
+      }));
+    } catch (error) {
+      console.error('Error in getMessagesWithAttachments:', error);
+      return [];
+    }
+  },
+
+  // Upload a file attachment for messages
+  async uploadAttachment(file: File): Promise<MessageAttachment> {
+    try {
+      const supabase = getSupabase();
+      
+      // Upload the file to storage
+      const timestamp = Date.now();
+      const fileExt = file.name.split('.').pop();
+      const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const filePath = `message_attachments/${timestamp}_${sanitizedName}`;
+      
+      const { error: uploadError, data } = await supabase
+        .storage
+        .from('attachments')
+        .upload(filePath, file);
+        
+      if (uploadError || !data) {
+        console.error('Error uploading attachment:', uploadError);
+        throw new Error('Failed to upload attachment');
+      }
+      
+      // Get the file URL
+      const { data: urlData } = supabase
+        .storage
+        .from('attachments')
+        .getPublicUrl(filePath);
+        
+      if (!urlData || !urlData.publicUrl) {
+        console.error('Error getting attachment URL');
+        throw new Error('Failed to get attachment URL');
+      }
+      
+      // Return attachment data
+      return {
+        url: urlData.publicUrl,
+        name: file.name,
+        type: file.type,
+        size: file.size
+      };
+    } catch (error) {
+      console.error('Error in uploadAttachment:', error);
       throw error;
     }
   }
@@ -1059,149 +1684,6 @@ export const categoryService = {
   }
 };
 
-// Message operations
-export const messageService = {
-  // Get messages for current user
-  async getUserMessages() {
-    try {
-      const supabase = getSupabase();
-      
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError) {
-        console.error('Auth error:', authError);
-        throw authError;
-      }
-      
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-      
-      const { data, error } = await supabase
-        .from('messages')
-        .select(`
-          id,
-          subject,
-          content,
-          sender_id,
-          recipient_id,
-          related_product_id,
-          created_at,
-          is_read,
-          sender:sender_id(name, email)
-        `)
-        .eq('recipient_id', user.id)
-        .order('created_at', { ascending: false });
-      
-      if (error) {
-        console.error('Error fetching messages:', error);
-        throw error;
-      }
-      
-      // Transform data to match our Message type
-      return data.map((item: any) => ({
-        id: item.id,
-        subject: item.subject,
-        content: item.content,
-        senderId: item.sender_id,
-        recipientId: item.recipient_id,
-        relatedProductId: item.related_product_id,
-        createdAt: item.created_at,
-        isRead: item.is_read,
-        senderName: item.sender?.name,
-        senderEmail: item.sender?.email,
-        sender: item.sender
-      })) as Message[];
-    } catch (error) {
-      console.error('Error in getUserMessages:', error);
-      return [];
-    }
-  },
-  
-  // Send a message
-  async sendMessage(message: Omit<Message, 'id' | 'createdAt' | 'senderId' | 'senderName' | 'senderEmail' | 'isRead'>) {
-    try {
-      const supabase = getSupabase();
-      
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError) {
-        console.error('Auth error:', authError);
-        throw authError;
-      }
-      
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-      
-      const { data, error } = await supabase
-        .from('messages')
-        .insert({
-          subject: message.subject,
-          content: message.content,
-          sender_id: user.id,
-          recipient_id: message.recipientId,
-          related_product_id: message.relatedProductId || null,
-          is_read: false
-        })
-        .select()
-        .single();
-      
-      if (error) {
-        console.error('Error sending message:', error);
-        throw error;
-      }
-      
-      // Transform data to match our Message type
-      return {
-        id: data.id,
-        subject: data.subject,
-        content: data.content,
-        senderId: data.sender_id,
-        recipientId: data.recipient_id,
-        relatedProductId: data.related_product_id,
-        createdAt: data.created_at,
-        isRead: data.is_read
-      } as Message;
-    } catch (error) {
-      console.error('Error in sendMessage:', error);
-      throw error;
-    }
-  },
-  
-  // Mark message as read
-  async markAsRead(id: string) {
-    try {
-      const supabase = getSupabase();
-      
-      const { data, error } = await supabase
-        .from('messages')
-        .update({ is_read: true })
-        .eq('id', id)
-        .select()
-        .single();
-      
-      if (error) {
-        console.error('Error marking message as read:', error);
-        throw error;
-      }
-      
-      // Transform data to match our Message type
-      return {
-        id: data.id,
-        subject: data.subject,
-        content: data.content,
-        senderId: data.sender_id,
-        recipientId: data.recipient_id,
-        relatedProductId: data.related_product_id,
-        createdAt: data.created_at,
-        isRead: data.is_read
-      } as Message;
-    } catch (error) {
-      console.error('Error in markAsRead:', error);
-      throw error;
-    }
-  }
-};
-
 // User operations
 export const userService = {
   // Get all users
@@ -1229,6 +1711,11 @@ export const userService = {
       console.error('Error in getUsers:', error);
       return [];
     }
+  },
+  
+  // Add getAllUsers as an alias of getUsers to fix the error
+  async getAllUsers() {
+    return this.getUsers();
   },
   
   // Get user by ID
@@ -1319,6 +1806,161 @@ export const userService = {
     } catch (error) {
       console.error('Error in getCurrentUser:', error instanceof Error ? error.message : String(error));
       return null;
+    }
+  },
+  
+  // Block a user
+  async blockUser(userIdToBlock: string): Promise<boolean> {
+    try {
+      const supabase = getSupabase();
+      
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        console.error('Auth error:', authError);
+        return false;
+      }
+      
+      // Check if already blocked
+      const { count, error: checkError } = await supabase
+        .from('blocked_users')
+        .select('*', { count: 'exact', head: true })
+        .eq('blocker_id', user.id)
+        .eq('blocked_id', userIdToBlock);
+        
+      if (checkError) {
+        console.error('Error checking if user is already blocked:', checkError);
+        return false;
+      }
+      
+      if (count && count > 0) {
+        // User is already blocked
+        return true;
+      }
+      
+      // Block the user
+      const blockData = {
+        blocker_id: user.id,
+        blocked_id: userIdToBlock,
+        blocked_at: new Date().toISOString()
+      };
+      
+      const { error: blockError } = await supabase
+        .from('blocked_users')
+        .insert(blockData);
+        
+      if (blockError) {
+        console.error('Error blocking user:', blockError);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error in blockUser:', error);
+      return false;
+    }
+  },
+  
+  // Unblock a user
+  async unblockUser(userIdToUnblock: string): Promise<boolean> {
+    try {
+      const supabase = getSupabase();
+      
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        console.error('Auth error:', authError);
+        return false;
+      }
+      
+      const { error: unblockError } = await supabase
+        .from('blocked_users')
+        .delete()
+        .eq('blocker_id', user.id)
+        .eq('blocked_id', userIdToUnblock);
+        
+      if (unblockError) {
+        console.error('Error unblocking user:', unblockError);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error in unblockUser:', error);
+      return false;
+    }
+  },
+  
+  // Check if a user is blocked by the current user
+  async isUserBlocked(userId: string): Promise<boolean> {
+    try {
+      const supabase = getSupabase();
+      
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        console.error('Auth error:', authError);
+        return false;
+      }
+      
+      // Check if the other user has blocked me
+      const { count, error: blockedError } = await supabase
+        .from('blocked_users')
+        .select('*', { count: 'exact', head: true })
+        .eq('blocker_id', userId)
+        .eq('blocked_id', user.id);
+        
+      if (blockedError) {
+        console.error('Error checking if user is blocked:', blockedError);
+        return false;
+      }
+      
+      return count ? count > 0 : false;
+    } catch (error) {
+      console.error('Error in isUserBlocked:', error);
+      return false;
+    }
+  },
+  
+  // Get all blocked users for the current user
+  async getBlockedUsers(): Promise<{ id: string, username: string }[]> {
+    try {
+      const supabase = getSupabase();
+      
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        console.error('Auth error:', authError);
+        return [];
+      }
+      
+      // Get users I have blocked
+      const { data: blockedUsers, error: blockedError } = await supabase
+        .from('blocked_users')
+        .select('blocked_id')
+        .eq('blocker_id', user.id);
+        
+      if (blockedError || !blockedUsers) {
+        console.error('Error getting blocked users:', blockedError);
+        return [];
+      }
+      
+      if (blockedUsers.length === 0) {
+        return [];
+      }
+      
+      // Get the user details for blocked users
+      const blockedIds = blockedUsers.map(bu => bu.blocked_id);
+      const { data: userDetails, error: userError } = await supabase
+        .from('users')
+        .select('id, username')
+        .in('id', blockedIds);
+        
+      if (userError || !userDetails) {
+        console.error('Error getting user details for blocked users:', userError);
+        return [];
+      }
+      
+      return userDetails;
+    } catch (error) {
+      console.error('Error in getBlockedUsers:', error);
+      return [];
     }
   }
 };

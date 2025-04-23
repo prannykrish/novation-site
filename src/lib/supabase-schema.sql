@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS public.assets (
   usage_start_date DATE,
   usage_end_date DATE,
   file_url TEXT,
+  files JSONB,  -- Added JSONB column for multiple files
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   folder_id UUID REFERENCES public.folders(id) ON DELETE SET NULL
@@ -168,6 +169,13 @@ CREATE POLICY "Recipients can update messages (mark as read)"
   FOR UPDATE
   USING (auth.uid() = recipient_id);
 
+-- Add specific policy for realtime access to messages
+-- This ensures users can only subscribe to realtime updates for messages they should see
+CREATE POLICY "Enable realtime for users' messages"
+  ON public.messages
+  FOR SELECT
+  USING (auth.uid() = recipient_id OR auth.uid() = sender_id);
+
 -- Trigger to automatically add user to users table after signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
@@ -205,4 +213,9 @@ JOIN
 ALTER TABLE public.assets
 ADD CONSTRAINT fk_assets_user
 FOREIGN KEY (user_id)
-REFERENCES public.users (id);  
+REFERENCES public.users (id);
+
+-- Realtime publication setup for messages
+-- This enables realtime functionality for the messages table
+DROP PUBLICATION IF EXISTS supabase_realtime;
+CREATE PUBLICATION supabase_realtime FOR TABLE messages;

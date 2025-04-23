@@ -9,10 +9,10 @@ const links = [
         title: 'Solution',
         href: '/solution',
     },
-    {
-        title: 'Customers',
-        href: '/customers',
-    },
+    // {
+    //     title: 'Customers',
+    //     href: '/customers',
+    // },
     {
         title: 'Pricing',
         href: '/pricing',

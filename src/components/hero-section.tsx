@@ -181,12 +181,13 @@ export default function HeroSection() {
                                         <div className="flex justify-center w-full mt-2">
                                             <RotatingWords
                                                 words={["instantly.", "accurately.", "rapidly.", "finally."]}
-                                                className=" font-bold"
+                                                className="font-bold"
                                                 style={{ color: '#00000' }} // Any hex, RGB, or named color
                                                 interval={3000}
                                             />
-
+                                            {/* <span className="ml-1">.</span> */}
                                         </div>
+                                     
                                     </div>
                                 </div>
 

@@ -1,7 +1,7 @@
 "use client"
 import { Logo } from './logo'
 import * as React from "react"
-import { Database, FileText, MessageSquare, Plus } from "lucide-react"
+import { Database, FileText, MessageSquare, Plus, Bell } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
 import { ThemeToggle } from "@/components/theme-toggle"
 import {
@@ -27,8 +27,16 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { Separator } from "@/components/ui/separator"
-import { userService } from "@/lib/database"
+import { messageService, userService } from "@/lib/database"
 import { DatabaseUser } from "@/types/database"
+import { getSupabase } from "@/lib/supabase"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { Button } from "@/components/ui/button"
+import { MessageNotificationListener } from "@/components/message-notification-listener"
 
 // Main navigation items
 const mainNavItems = [
@@ -64,9 +72,18 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
   // State for current user
   const [currentUser, setCurrentUser] = React.useState<DatabaseUser | null>(null)
   
-  // Fetch current user on component mount
+  // State for unread messages count
+  const [unreadMessages, setUnreadMessages] = React.useState<number>(0)
+  
+  // Fetch current user and unread messages on component mount
   React.useEffect(() => {
     fetchCurrentUser()
+    fetchUnreadMessages()
+    
+    // Set up an interval to periodically check for new messages
+    const intervalId = setInterval(fetchUnreadMessages, 60000); // Check every minute
+    
+    return () => clearInterval(intervalId);
   }, [])
   
   // Function to fetch the current user - can be called after profile updates
@@ -79,6 +96,16 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
     }
   }
   
+  // Function to fetch unread messages count
+  const fetchUnreadMessages = async () => {
+    try {
+      const count = await messageService.getUnreadMessagesCount()
+      setUnreadMessages(count)
+    } catch (error) {
+      console.error("Error fetching unread messages:", error)
+    }
+  }
+  
   // Create a user object for NavUser component
   const userData = {
     user: {
@@ -86,6 +113,11 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
       email: currentUser?.email || "",
       avatar: currentUser?.avatar_url || "/avatars/shadcn.jpg",
     }
+  }
+
+  // Function to navigate to messages page
+  const goToMessages = () => {
+    router.push('/dashboard/messages')
   }
 
   // Get the current page title for the breadcrumb
@@ -97,6 +129,9 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
+      {/* Include the MessageNotificationListener component */}
+      <MessageNotificationListener />
+      
       <div className="flex h-screen w-full">
         {/* Main sidebar */}
         <Sidebar collapsible="icon" className="border-r shrink-0">
@@ -137,6 +172,11 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                       >
                         <item.icon />
                         <span>{item.title}</span>
+                        {item.title === "Messages" && unreadMessages > 0 && (
+                          <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white">
+                            {unreadMessages}
+                          </span>
+                        )}
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   ))}
@@ -167,7 +207,40 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                 </BreadcrumbList>
               </Breadcrumb>
             </div>
-            <ThemeToggle />
+            <div className="flex items-center gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" className="relative" onClick={goToMessages}>
+                    <Bell className="h-5 w-5" />
+                    {unreadMessages > 0 && (
+                      <span className="absolute top-0 right-0 h-4 w-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+                        {unreadMessages}
+                      </span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80">
+                  <div className="flex flex-col gap-2">
+                    <h3 className="font-semibold">Messages</h3>
+                    {unreadMessages > 0 ? (
+                      <div>
+                        <p className="text-sm">You have {unreadMessages} unread messages.</p>
+                        <Button 
+                          className="w-full mt-2" 
+                          size="sm" 
+                          onClick={goToMessages}
+                        >
+                          View Messages
+                        </Button>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No unread messages</p>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <ThemeToggle />
+            </div>
           </header>
           <main className="flex-1 overflow-auto w-full">{children}</main>
         </div>
