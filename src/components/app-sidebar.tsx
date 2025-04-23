@@ -6,8 +6,7 @@ import { useRouter } from "next/navigation"
 import { messageService } from "@/lib/database"
 import { Message } from "@/types/database"
 import { getSupabase } from "@/lib/supabase"
-import { RealtimeChannel } from "@supabase/supabase-js"
-
+import type { RealtimeChannel } from "@supabase/supabase-js"
 import { NavUser } from "./nav-user"
 import {
   Sidebar,
