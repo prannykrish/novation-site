@@ -140,9 +140,9 @@ export default function LookupPage() {
     try {
       const srvFilters: any = {}
       if (searchFilters.keyword) srvFilters.keyword = searchFilters.keyword
-      if (searchFilters.categories?.length) srvFilters.category = searchFilters.categories[0]
-      if (searchFilters.tags?.length) srvFilters.tags = searchFilters.tags
-      if (searchFilters.types?.length) srvFilters.type = searchFilters.types[0]
+      if ((searchFilters.categories || []).length) srvFilters.category = (searchFilters.categories || [])[0]
+      if ((searchFilters.tags || []).length) srvFilters.tags = (searchFilters.tags || [])
+      if ((searchFilters.types || []).length) srvFilters.type = (searchFilters.types || [])[0]
       if (searchFilters.startDate) srvFilters.startDate = searchFilters.startDate
       if (searchFilters.endDate) srvFilters.endDate = searchFilters.endDate
       if (searchFilters.isPublicOnly) srvFilters.isPublicOnly = true
