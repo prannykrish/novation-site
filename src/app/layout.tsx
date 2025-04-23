@@ -25,6 +25,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className="dark">
+      <link rel="icon" href="/vercel.svg" type="image/svg+xml" />
+      <link rel="alternate icon" href="/favicon.ico" />
       <head>
         {/* This inline style prevents flash of white theme */}
         <style dangerouslySetInnerHTML={{ __html: `
