@@ -47,6 +47,10 @@ export function AssetPageContent() {
     setOpen(false)
   }
 
+  const handleUpdateAsset = () => {
+    // Update asset logic here
+  }
+
   return (
     <div className="p-4">
       <div className="mb-6 flex justify-between items-center">
@@ -93,7 +97,8 @@ export function AssetPageContent() {
               </div>
             </div>
             <DialogFooter>
-              <Button onClick={handleCreateAsset}>Create Asset</Button>
+              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button onClick={handleUpdateAsset}>Save changes</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

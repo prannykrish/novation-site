@@ -206,7 +206,7 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-auto flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <div className="flex items-center gap-3">
             {getFileIcon()}

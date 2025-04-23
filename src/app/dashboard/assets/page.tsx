@@ -602,7 +602,7 @@ export default function AssetsPage() {
     setLoading(true);
     try {
       // Load assets for the current folder
-      const assetsData = await assetService.getAssets({ folderId });
+      const assetsData = await assetService.getAssets({ folderId: folderId ?? undefined });
       setAssets(assetsData || []);
       
       // Load folders for the current folder
@@ -680,7 +680,7 @@ export default function AssetsPage() {
         usageEndDate: newAsset.usageEndDate,
         fileUrl: newAsset.fileUrl,
         files: uploadedFiles,
-        folderId: currentFolder?.id || null
+        folderId: currentFolder?.id || undefined
       });
       
       setShowAddAssetDialog(false);
@@ -708,7 +708,7 @@ export default function AssetsPage() {
       await folderService.createFolder({
         name: newFolder.name,
         description: newFolder.description,
-        parentId: currentFolder?.id || null
+        parentId: currentFolder?.id || undefined
       });
       
       setShowAddFolderDialog(false);
@@ -862,57 +862,29 @@ export default function AssetsPage() {
   };
   
   const handleDrop = async (itemId: string, itemType: string, targetId?: string) => {
-    // Save the item before removing it from the UI, in case we need to restore it on error
+    setLoading(true);
+    
+    // Store the dragged items in local variables for potential rollback
     const draggedAsset = assets.find(asset => asset.id === itemId);
     const draggedFolder = folders.find(folder => folder.id === itemId);
-    
-    // Track the source folder ID to handle reloading correctly
-    const sourceFolder = currentFolder?.id;
-    
+
     try {
-      setLoading(true);
-      
-      // First, update the local state to immediately reflect the change
+      // Immediately remove the item from local state.
       if (itemType === ItemTypes.ASSET) {
-        // Remove the asset from the current view
-        setAssets(prevAssets => prevAssets.filter(asset => asset.id !== itemId));
-        
-        // Make the backend API call to update the database
+        setAssets(prev => prev.filter(a => a.id !== itemId));
         await assetService.moveAssetToFolder(itemId, targetId || null);
       } else if (itemType === ItemTypes.FOLDER) {
-        // Remove the folder from the current view
-        setFolders(prevFolders => prevFolders.filter(folder => folder.id !== itemId));
-        
-        // Make the backend API call to update the database
-        await folderService.updateFolder(itemId, { parentId: targetId || null });
-      }
-      
-      // Determine if we need to refresh the target location
-      if (targetId === currentFolder?.id) {
-        // We're in the target folder, reload to show the newly added item
-        await loadItems(currentFolder?.id);
-      } else if (targetId === null && currentFolder === null) {
-        // We're at root and the item was moved to root, reload to show the item
-        await loadItems(null);
-      }
-      
-      // Set showRootDrop to true temporarily when in a folder to indicate drag capability
-      if (currentFolder) {
-        setShowRootDrop(true);
-        setTimeout(() => setShowRootDrop(false), 2000);
+        setFolders(prev => prev.filter(f => f.id !== itemId));
+        await folderService.updateFolder(itemId, { parentId: targetId || undefined });
       }
     } catch (error) {
       console.error(`Error moving ${itemType}:`, error);
-      
-      // On error, restore the item to the UI
+      // Rollback changes if server operations fail
       if (itemType === ItemTypes.ASSET && draggedAsset) {
-        setAssets(prevAssets => [...prevAssets, draggedAsset]);
+        setAssets(prev => [...prev, draggedAsset]);
       } else if (itemType === ItemTypes.FOLDER && draggedFolder) {
-        setFolders(prevFolders => [...prevFolders, draggedFolder]);
+        setFolders(prev => [...prev, draggedFolder]);
       }
-      
-      // Refresh the current view to ensure consistency
-      await loadItems(sourceFolder);
     } finally {
       setLoading(false);
     }
@@ -1284,15 +1256,15 @@ export default function AssetsPage() {
         
         {/* Edit Asset Dialog */}
         <Dialog open={showEditAssetDialog} onOpenChange={setShowEditAssetDialog}>
-          <DialogContent className="sm:max-w-[525px] max-h-[80vh] p-0 overflow-hidden">
-            <DialogHeader className="px-6 pt-6 pb-2">
+          <DialogContent className="sm:max-w-[525px] flex flex-col max-h-[85vh]">
+            <DialogHeader>
               <DialogTitle>Edit Asset</DialogTitle>
               <DialogDescription>
                 Update the details of your asset.
               </DialogDescription>
             </DialogHeader>
-            <ScrollArea className="max-h-[calc(80vh-8rem)]">
-              <div className="grid gap-4 py-4 px-6">
+            <div className="flex-grow overflow-y-auto pr-1">
+              <div className="grid gap-4 py-4">
                 {/* Same form fields as Create Asset Dialog */}
                 <div className="grid gap-2">
                   <Label htmlFor="edit-name">Asset Name*</Label>
@@ -1415,13 +1387,17 @@ export default function AssetsPage() {
                   </div>
                 </div>
               </div>
-            </ScrollArea>
-            <DialogFooter className="px-6 py-4 border-t">
+            </div>
+            <div className="border-t mt-4 pt-4 flex justify-end gap-2 sticky bottom-0 bg-background">
               <Button variant="outline" onClick={() => setShowEditAssetDialog(false)}>Cancel</Button>
-              <Button onClick={handleEditAsset} disabled={loading}>
-                {loading ? "Updating..." : "Update Asset"}
+              <Button 
+                onClick={handleEditAsset} 
+                disabled={loading || !newAsset.name.trim()} 
+                className="bg-primary hover:bg-primary/90"
+              >
+                {loading ? "Saving..." : "Save Changes"}
               </Button>
-            </DialogFooter>
+            </div>
           </DialogContent>
         </Dialog>
         
