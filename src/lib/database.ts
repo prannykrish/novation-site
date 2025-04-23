@@ -1257,10 +1257,10 @@ export const messageService = {
       createdAt: messageData.created_at,
       isRead: messageData.is_read,
       // These fields might not be available from database directly
-      senderEmail: null,
-      senderName: null,
-      recipientEmail: null,
-      recipientName: null
+      senderEmail: undefined,
+      senderName: undefined,
+      recipientEmail: undefined,
+      recipientName: undefined
     };
   },
   
