@@ -43,35 +43,6 @@ interface FolderManagerProps {
   onDropAsset?: (asset: unknown) => void;
 }
 
-function FolderDrop({ folder, onDrop, children }: { folder: FolderType; onDrop: (folderId: string) => void; children: React.ReactNode }) {
-  const ref = React.useRef<HTMLDivElement>(null);
-  const [, drop] = useDrop({
-    accept: 'ASSET',
-    drop: (item: { id: string }) => onDrop(folder.id),
-  });
-  drop(ref);
-  return (
-    <div ref={ref} className="...">
-      {children}
-    </div>
-  );
-}
-
-function DraggableAsset({ asset, onEdit }: { asset: any; onEdit: () => void }) {
-  const ref = React.useRef<HTMLDivElement>(null);
-  const [{ isDragging }, drag] = useDrag({
-    type: 'ASSET',
-    item: { id: asset.id },
-    collect: (monitor) => ({ isDragging: monitor.isDragging() }),
-  });
-  drag(ref);
-  return (
-    <div ref={ref} style={{ opacity: isDragging ? 0.5 : 1 }} className="...">
-      {/* ... */}
-    </div>
-  );
-}
-
 // Format the description text for better readability
 const formatDescription = (description: string | null | undefined): string => {
   if (!description) return "No description provided";
@@ -88,6 +59,7 @@ export function FolderManager({ onSelectFolder, selectedFolderId, onDropAsset }:
   const [assets, setAssets] = React.useState<any[]>([]); // Assuming assets are fetched and stored here
   const [activeFolder, setActiveFolder] = React.useState<FolderType | null>(null);
   const [showFolderDetailsDialog, setShowFolderDetailsDialog] = React.useState(false);
+  const [isDragOperation, setIsDragOperation] = React.useState(false);
 
   React.useEffect(() => {
     if (currentFolderId !== selectedFolderId) {
@@ -109,21 +81,18 @@ export function FolderManager({ onSelectFolder, selectedFolderId, onDropAsset }:
     loadFolders();
   }, [currentFolderId]);
 
-  const loadFolders = async () => {
+  const loadFolders = async (skipPathUpdate = false) => {
     setLoading(true);
     try {
       const folderData = await folderService.getFolders(currentFolderId);
       setFolders(folderData);
 
-      if (currentFolderId) {
+      // Only update folder path when explicitly navigating, not during drag operations
+      if (currentFolderId && !skipPathUpdate && !isDragOperation && !folderPath.some(f => f.id === currentFolderId)) {
         const currentFolder = await folderService.getFolderById(currentFolderId);
         if (currentFolder) {
-          if (!folderPath.some((f) => f.id === currentFolder.id)) {
-            setFolderPath((prev) => [...prev, currentFolder]);
-          }
+          setFolderPath((prev) => [...prev, currentFolder]);
         }
-      } else {
-        setFolderPath([]);
       }
     } catch (error) {
       console.error("Error loading folders:", error);
@@ -253,19 +222,37 @@ export function FolderManager({ onSelectFolder, selectedFolderId, onDropAsset }:
 
   const DraggableFolder = ({ folder, onDrop }: { folder: FolderType; onDrop: (draggedFolderId: string, targetFolderId: string) => void }) => {
     const ref = React.useRef<HTMLDivElement>(null);
-    const [, drag] = useDrag({
+    const [{ isDragging }, drag] = useDrag({
       type: ItemType.FOLDER,
       item: { id: folder.id },
+      collect: (monitor) => ({ isDragging: monitor.isDragging() }),
     });
 
-    const [, drop] = useDrop({
-      accept: ItemType.FOLDER,
-      drop: (item: { id: string }) => onDrop(item.id, folder.id),
+    const [{ isOver, canDrop }, drop] = useDrop({
+      accept: [ItemType.FOLDER, ItemType.ASSET],
+      drop: (item: { id: string, type?: string }) => {
+        // Prevent dropping a folder into itself
+        if (item.id !== folder.id) {
+          onDrop(item.id, folder.id);
+          return { droppedInFolder: true };
+        }
+      },
+      canDrop: (item) => item.id !== folder.id, // Prevent circular references
+      collect: (monitor) => ({
+        isOver: monitor.isOver(),
+        canDrop: monitor.canDrop(),
+      }),
     });
 
     drag(drop(ref));
     return (
-      <div ref={ref} className="flex items-center">
+      <div 
+        ref={ref} 
+        className={`flex items-center relative ${
+          isDragging ? "opacity-50" : ""
+        } ${
+          isOver && canDrop ? "bg-primary/10 ring-1 ring-primary" : ""
+        }`}>
         <Button
           variant="ghost"
           className={`justify-start h-auto p-2 flex-1 ${
@@ -319,8 +306,41 @@ export function FolderManager({ onSelectFolder, selectedFolderId, onDropAsset }:
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        
+        {/* Visual indicator for drop target */}
+        {isOver && canDrop && (
+          <div className="absolute inset-0 border-2 border-primary border-dashed rounded-lg pointer-events-none" />
+        )}
       </div>
     );
+  };
+
+  // Add this function to handle folder movements without changing navigation
+  const handleFolderMove = async (draggedItemId: string, targetFolderId: string) => {
+    try {
+      setIsDragOperation(true);
+      
+      // Check if it's an asset or folder being moved
+      const isAsset = assets.some(asset => asset.id === draggedItemId);
+      
+      if (isAsset && onDropAsset) {
+        // Handle asset drop
+        onDropAsset({ id: draggedItemId, targetFolder: targetFolderId });
+      } else {
+        // Handle folder drop (move folder to new parent)
+        await folderService.updateFolder(draggedItemId, { parentId: targetFolderId });
+        
+        // Reload the current view only, without changing navigation
+        await loadFolders(true);
+      }
+    } catch (error) {
+      console.error("Error moving item:", error);
+    } finally {
+      // Reset the drag operation flag after a short delay
+      setTimeout(() => {
+        setIsDragOperation(false);
+      }, 100);
+    }
   };
 
   return (
@@ -407,25 +427,8 @@ export function FolderManager({ onSelectFolder, selectedFolderId, onDropAsset }:
               <DraggableFolder
                 key={folder.id}
                 folder={folder}
-                onDrop={async (draggedFolderId, targetFolderId) => {
-                  try {
-                    await folderService.updateFolder(draggedFolderId, { parentId: targetFolderId });
-                    await loadFolders();
-                  } catch (error) {
-                    console.error("Error moving folder:", error);
-                  }
-                }}
+                onDrop={handleFolderMove}
               />
-            ))}
-
-            {folders.map((folder) => (
-              <FolderDrop key={folder.id} folder={folder} onDrop={(folderId) => onDropAsset && onDropAsset(folderId)}>
-              {folder.name}
-            </FolderDrop>
-            ))}
-
-            {assets.map((asset) => (
-              <DraggableAsset key={asset.id} asset={asset} onEdit={() => {}} />
             ))}
           </div>
         )}
