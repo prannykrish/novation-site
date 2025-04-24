@@ -601,8 +601,11 @@ export default function AssetsPage() {
   const loadItems = async (folderId: string | null) => {
     setLoading(true);
     try {
-      // Load assets for the current folder
-      const assetsData = await assetService.getAssets({ folderId: folderId ?? undefined });
+      // Load assets for the current folder - only show the current user's assets
+      const assetsData = await assetService.getAssets({ 
+        folderId: folderId ?? undefined,
+        currentUserOnly: true // Only show assets owned by the current user
+      });
       setAssets(assetsData || []);
       
       // Load folders for the current folder

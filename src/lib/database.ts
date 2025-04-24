@@ -361,6 +361,7 @@ export const assetService = {
     type?: string;
     page?: number;
     pageSize?: number;
+    currentUserOnly?: boolean; // Filter to only show assets from the current user
   } = {}) {
     try {
       const supabase = getSupabase();
@@ -390,6 +391,19 @@ export const assetService = {
           folder_id, 
           users (name, email)
         `, { count: 'exact' });  // Add count to get total number of matching records
+      
+      // If currentUserOnly is true, only show the current user's assets
+      if (filters.currentUserOnly) {
+        // Get current user
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) {
+          console.error('Auth error:', authError);
+          throw new Error('User not authenticated');
+        }
+        
+        // Add filter for current user
+        query = query.eq('user_id', user.id);
+      }
       
       // Apply filters
       if (filters.keyword) {
@@ -504,6 +518,7 @@ export const assetService = {
     type?: string;
     page?: number;
     pageSize?: number;
+    currentUserOnly?: boolean; // Filter to only show assets from the current user
   } = {}) {
     // For backwards compatibility, use the pagination method and return just the items
     const result = await this.getAssetsWithPagination(filters);
