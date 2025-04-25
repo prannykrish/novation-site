@@ -11,12 +11,13 @@ export async function GET(req: NextRequest) {
   const code = searchParams.get('code')
   const type = searchParams.get('type')
   
-  // Get the host from the request URL
-  const host = req.headers.get('host') || ''
-  const protocol = host.includes('localhost') ? 'http' : 'https'
-  const baseUrl = `${protocol}://${host}`
+  // Get the proper base URL - consider X-Forwarded-Host for proxies
+  const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || ''
+  const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http'
   
-  console.log(`Auth callback triggered. Host: ${host}, Base URL: ${baseUrl}`)
+  // Use NEXT_PUBLIC_URL if available (recommended approach)
+  const baseUrl = process.env.NEXT_PUBLIC_URL || `${protocol}://${host}`
+  console.log(`Auth callback triggered. Base URL: ${baseUrl}`)
   
   if (code) {
     await supabase.auth.exchangeCodeForSession(code)
@@ -24,14 +25,10 @@ export async function GET(req: NextRequest) {
     // Check if this is a password recovery flow
     if (type === 'recovery') {
       // For password recovery, redirect to the reset page
-      const resetUrl = new URL('/auth/reset', req.url)
-      console.log(`Redirecting to reset page: ${resetUrl.toString()}`)
-      return NextResponse.redirect(resetUrl)
+      return NextResponse.redirect(`${baseUrl}/auth/reset`)
     }
   }
   
   // For normal sign-in/sign-up flows, redirect to dashboard
-  const dashboardUrl = new URL('/dashboard', req.url)
-  console.log(`Redirecting to dashboard: ${dashboardUrl.toString()}`)
-  return NextResponse.redirect(dashboardUrl)
+  return NextResponse.redirect(`${baseUrl}/dashboard`)
 }
