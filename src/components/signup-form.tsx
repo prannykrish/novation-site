@@ -212,7 +212,7 @@ export function SignUpForm({
             <img
               src="/images/redsignup.jpg"
               alt="Decorative plant image"
-              className="absolute inset-0 h-full w-full object-cover object-center hidden dark:block brightness-75"
+              className="absolute inset-0 h-full w-full object-cover object-center hidden dark:block brightness-80"
             />
           </div>
         </CardContent>
