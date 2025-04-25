@@ -11,16 +11,27 @@ export async function GET(req: NextRequest) {
   const code = searchParams.get('code')
   const type = searchParams.get('type')
   
+  // Get the host from the request URL
+  const host = req.headers.get('host') || ''
+  const protocol = host.includes('localhost') ? 'http' : 'https'
+  const baseUrl = `${protocol}://${host}`
+  
+  console.log(`Auth callback triggered. Host: ${host}, Base URL: ${baseUrl}`)
+  
   if (code) {
     await supabase.auth.exchangeCodeForSession(code)
     
     // Check if this is a password recovery flow
     if (type === 'recovery') {
       // For password recovery, redirect to the reset page
-      return NextResponse.redirect(new URL('/auth/reset', req.url))
+      const resetUrl = new URL('/auth/reset', req.url)
+      console.log(`Redirecting to reset page: ${resetUrl.toString()}`)
+      return NextResponse.redirect(resetUrl)
     }
   }
   
   // For normal sign-in/sign-up flows, redirect to dashboard
-  return NextResponse.redirect(new URL('/dashboard', req.url))
+  const dashboardUrl = new URL('/dashboard', req.url)
+  console.log(`Redirecting to dashboard: ${dashboardUrl.toString()}`)
+  return NextResponse.redirect(dashboardUrl)
 }

@@ -76,10 +76,14 @@ export function LoginForm({
 
   const handleGoogleSignIn = async () => {
     try {
+      // Log the redirect URL for debugging
+      const redirectUrl = `${window.location.origin}/auth/callback`;
+      console.log(`Google Sign-in - Redirect URL: ${redirectUrl}, Origin: ${window.location.origin}`);
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: redirectUrl,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
