@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { AlertCircle, X } from "lucide-react"
+import { AlertCircle, X, Eye, EyeOff } from "lucide-react"
 
 export function LoginForm({
   className,
@@ -23,6 +23,7 @@ export function LoginForm({
   const [error, setError] = useState<string | null>(null);
   const [showResetForm, setShowResetForm] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   
   // Use the proper client component client
   const supabase = createClientComponentClient();
@@ -79,6 +80,10 @@ export function LoginForm({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
         }
       });
       
@@ -198,13 +203,23 @@ export function LoginForm({
                       Forgot your password?
                     </button>
                   </div>
-                  <Input 
-                    id="password" 
-                    type="password" 
-                    required 
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
+                  <div className="relative">
+                    <Input 
+                      id="password" 
+                      type={showPassword ? "text" : "password"} 
+                      required 
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-3 flex items-center text-muted-foreground"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      <span className="sr-only">Toggle password visibility</span>
+                    </button>
+                  </div>
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? 'Signing in...' : 'Login'}

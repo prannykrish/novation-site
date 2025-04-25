@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { Eye, EyeOff } from "lucide-react"
 
 export function SignUpForm({
   className,
@@ -20,6 +21,8 @@ export function SignUpForm({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   // Use the proper client component client
   const supabase = createClientComponentClient();
@@ -55,13 +58,8 @@ export function SignUpForm({
       // Force a revalidation of the route
       router.refresh();
       
-      // Check if email confirmation is needed
-      // When identities array is empty, it means email verification is required
-      if (data?.user && data.user.identities?.length === 0) {
-        router.push('/verify-email');
-      } else {
-        router.push('/dashboard');
-      }
+      // Always redirect to dashboard - remove email verification check
+      router.push('/dashboard');
     } catch (err: any) {
       console.error('Signup error:', err);
       setError(err.message);
@@ -76,11 +74,16 @@ export function SignUpForm({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
         }
       });
       
       if (error) throw error;
     } catch (err: any) {
+      console.error('Google sign-up error:', err);
       setError(err.message);
     }
   };
@@ -126,23 +129,43 @@ export function SignUpForm({
               </div>
               <div className="grid gap-3">
                 <Label htmlFor="password">Password</Label>
-                <Input 
-                  id="password" 
-                  type="password" 
-                  required 
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
+                <div className="relative">
+                  <Input 
+                    id="password" 
+                    type={showPassword ? "text" : "password"} 
+                    required 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-3 flex items-center text-muted-foreground"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    <span className="sr-only">Toggle password visibility</span>
+                  </button>
+                </div>
               </div>
               <div className="grid gap-3">
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <Input 
-                  id="confirmPassword" 
-                  type="password" 
-                  required 
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                />
+                <div className="relative">
+                  <Input 
+                    id="confirmPassword" 
+                    type={showConfirmPassword ? "text" : "password"} 
+                    required 
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-3 flex items-center text-muted-foreground"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    <span className="sr-only">Toggle confirm password visibility</span>
+                  </button>
+                </div>
               </div>
               <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90" disabled={loading}>
                 {loading ? 'Signing up...' : 'Sign Up'}

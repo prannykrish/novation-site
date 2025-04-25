@@ -6,10 +6,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
-import { AssetFile } from "@/types/database"
+import { AssetFile, MessageAttachment } from "@/types/database"
 
 interface FilePreviewProps {
-  file: AssetFile | null
+  file: AssetFile | MessageAttachment | null
   isOpen: boolean
   onClose: () => void
 }

@@ -10,13 +10,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { CheckCircle, Send, User as UserIcon, Plus, ArrowLeft, Paperclip, X, FileIcon } from 'lucide-react'
+import { CheckCircle, Send, User as UserIcon, Plus, ArrowLeft, Paperclip, X, FileIcon, Eye } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Textarea } from '@/components/ui/textarea'
 import { format } from 'date-fns'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
+import { FilePreview } from '@/components/file-preview'
 
 export default function MessagesPage() {
   const [currentUser, setCurrentUser] = useState<DatabaseUser | null>(null)
@@ -42,13 +43,29 @@ export default function MessagesPage() {
     attachments: [] as MessageAttachment[]
   })
 
-  // Refs for file input elements
+  // Refs for file input elements and message container
   const replyFileInputRef = useRef<HTMLInputElement>(null)
   const newMessageFileInputRef = useRef<HTMLInputElement>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const router = useRouter()
   const searchParams = useSearchParams()
   const view = searchParams.get('view') || 'inbox'
+
+  // Attachment preview state
+  const [previewFile, setPreviewFile] = useState<MessageAttachment | null>(null)
+  const [previewOpen, setPreviewOpen] = useState(false)
+
+  // Scroll to bottom of messages when conversation updates
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  useEffect(() => {
+    if (conversationMessages.length > 0) {
+      scrollToBottom()
+    }
+  }, [conversationMessages])
 
   // Initial data fetching
   useEffect(() => {
@@ -65,8 +82,8 @@ export default function MessagesPage() {
           return
         }
 
-        // Get all messages
-        const userMessages = await messageService.getUserMessages()
+        // Get all messages with enhanced loading - include attachments
+        const userMessages = await messageService.getMessagesWithAttachments()
         setMessages(userMessages)
 
         // Get all users
@@ -84,13 +101,31 @@ export default function MessagesPage() {
           const conversationUser = allUsers.find(u => u.id === conversationUserId)
           if (conversationUser) {
             setSelectedConversationUser(conversationUser)
-            // Load conversation messages
-            await loadConversation(conversationUser)
+            // Load conversation messages after messages are loaded
+            const conversationMsgs = userMessages.filter(
+              msg =>
+                (msg.senderId === conversationUser.id && msg.recipientId === user.id) ||
+                (msg.senderId === user.id && msg.recipientId === conversationUser.id)
+            )
+            
+            // Sort by creation date
+            const sortedMessages = [...conversationMsgs].sort(
+              (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+            )
+            
+            setConversationMessages(sortedMessages)
+            
+            // Mark messages as read
+            markConversationMessagesAsRead(conversationMsgs, conversationUser.id)
           }
         }
 
         // Set up realtime subscription only after we have the user ID
-        setupRealtimeSubscription(user.id)
+        const cleanupSubscription = setupRealtimeSubscription(user.id)
+        
+        return () => {
+          cleanupSubscription()
+        }
       } catch (error) {
         console.error('Error initializing messages page:', error)
       } finally {
@@ -99,10 +134,6 @@ export default function MessagesPage() {
     }
 
     initialize()
-
-    return () => {
-      // Cleanup is handled in setupRealtimeSubscription
-    }
   }, [searchParams])
 
   // Setup realtime subscription as a separate function for better organization
@@ -159,47 +190,78 @@ export default function MessagesPage() {
 
   // Centralized handler for message updates to avoid duplicate code
   const handleMessageUpdate = async () => {
-    // Refresh messages
-    const updatedMessages = await messageService.getUserMessages()
-    setMessages(updatedMessages)
+    try {
+      // Refresh messages - make sure to get messages with attachments
+      const updatedMessages = await messageService.getMessagesWithAttachments()
+      setMessages(updatedMessages)
+      console.log('Messages updated, count:', updatedMessages.length)
 
-    // If in conversation view, also update conversation messages
-    if (selectedConversationUser && currentUser) {
-      // Re-filter messages rather than making another API call
-      const conversationMsgs = updatedMessages.filter(
-        msg =>
-          (msg.senderId === selectedConversationUser.id && msg.recipientId === currentUser.id) ||
-          (msg.senderId === currentUser.id && msg.recipientId === selectedConversationUser.id)
-      )
+      // If in conversation view, also update conversation messages
+      if (selectedConversationUser && currentUser) {
+        // Re-filter messages rather than making another API call
+        const conversationMsgs = updatedMessages.filter(
+          msg =>
+            (msg.senderId === selectedConversationUser.id && msg.recipientId === currentUser.id) ||
+            (msg.senderId === currentUser.id && msg.recipientId === selectedConversationUser.id)
+        )
 
-      // Sort by creation date
-      const sortedMessages = [...conversationMsgs].sort(
-        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      )
+        // Sort by creation date
+        const sortedMessages = [...conversationMsgs].sort(
+          (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        )
 
-      setConversationMessages(sortedMessages)
+        console.log('Conversation updated, messages:', sortedMessages.length)
+        setConversationMessages(sortedMessages)
 
-      // Mark received messages as read automatically in conversation view
-      const unreadMessages = conversationMsgs.filter(
-        msg => !msg.isRead && msg.senderId === selectedConversationUser.id
-      )
+        // Mark received messages as read automatically in conversation view
+        const unreadMessages = conversationMsgs.filter(
+          msg => !msg.isRead && msg.senderId === selectedConversationUser.id
+        )
 
-      if (unreadMessages.length > 0) {
-        try {
-          for (const msg of unreadMessages) {
-            await messageService.markAsRead(msg.id)
-          }
-          // Update local message state to reflect read status
-          setMessages(prevMessages =>
-            prevMessages.map(msg =>
-              unreadMessages.some(unread => unread.id === msg.id)
-                ? { ...msg, isRead: true }
-                : msg
+        if (unreadMessages.length > 0) {
+          try {
+            for (const msg of unreadMessages) {
+              await messageService.markAsRead(msg.id)
+            }
+            // Update local message state to reflect read status
+            setMessages(prevMessages =>
+              prevMessages.map(msg =>
+                unreadMessages.some(unread => unread.id === msg.id)
+                  ? { ...msg, isRead: true }
+                  : msg
+              )
             )
-          )
-        } catch (error) {
-          console.error('Error marking messages as read:', error)
+          } catch (error) {
+            console.error('Error marking messages as read:', error)
+          }
         }
+      }
+    } catch (error) {
+      console.error('Error in handleMessageUpdate:', error)
+    }
+  }
+
+  // Mark conversation messages as read
+  const markConversationMessagesAsRead = async (conversationMsgs: Message[], otherUserId: string) => {
+    const unreadMessages = conversationMsgs.filter(
+      msg => !msg.isRead && msg.senderId === otherUserId
+    )
+
+    if (unreadMessages.length > 0) {
+      try {
+        for (const msg of unreadMessages) {
+          await messageService.markAsRead(msg.id)
+        }
+        // Update local message state to reflect read status
+        setMessages(prevMessages =>
+          prevMessages.map(msg =>
+            unreadMessages.some(unread => unread.id === msg.id)
+              ? { ...msg, isRead: true }
+              : msg
+          )
+        )
+      } catch (error) {
+        console.error('Error marking messages as read:', error)
       }
     }
   }
@@ -223,27 +285,7 @@ export default function MessagesPage() {
     setConversationMessages(sortedMessages)
 
     // Mark all unread messages from this user as read
-    const unreadMessages = conversationMsgs.filter(
-      msg => !msg.isRead && msg.senderId === otherUser.id
-    )
-
-    if (unreadMessages.length > 0) {
-      try {
-        for (const msg of unreadMessages) {
-          await messageService.markAsRead(msg.id)
-        }
-        // Update local message state to reflect read status
-        setMessages(prevMessages =>
-          prevMessages.map(msg =>
-            unreadMessages.some(unread => unread.id === msg.id)
-              ? { ...msg, isRead: true }
-              : msg
-          )
-        )
-      } catch (error) {
-        console.error('Error marking messages as read:', error)
-      }
-    }
+    markConversationMessagesAsRead(conversationMsgs, otherUser.id)
   }
 
   // Handle file selection for reply attachments
@@ -351,12 +393,8 @@ export default function MessagesPage() {
       setReplyContent('')
       setReplyAttachments([])
 
-      // Refresh conversation
-      await loadConversation(selectedConversationUser)
-
-      // Also refresh all messages
-      const updatedMessages = await messageService.getUserMessages()
-      setMessages(updatedMessages)
+      // Use the handleMessageUpdate function to refresh all messages and conversation
+      await handleMessageUpdate()
 
     } catch (error) {
       console.error('Error sending reply:', error)
@@ -566,14 +604,27 @@ export default function MessagesPage() {
                           </div>
                         </div>
                       </div>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => removeNewMessageAttachment(index)}
-                        className="h-8 w-8"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => {
+                            setPreviewFile(file);
+                            setPreviewOpen(true);
+                          }}
+                          className="h-8 w-8"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => removeNewMessageAttachment(index)}
+                          className="h-8 w-8"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -612,6 +663,9 @@ export default function MessagesPage() {
             </Button>
           </form>
         </Card>
+        {previewOpen && previewFile && (
+          <FilePreview file={previewFile} isOpen={previewOpen} onClose={() => setPreviewOpen(false)} />
+        )}
       </div>
     )
   }
@@ -620,28 +674,31 @@ export default function MessagesPage() {
   if (selectedConversationUser) {
     return (
       <div className="flex h-full flex-col p-6">
-        <div className="mb-6 flex items-center">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="mr-2"
-            onClick={() => setSelectedConversationUser(null)}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-
+        {/* Fixed header with back button and user info */}
+        <div className="sticky top-0 z-10 bg-background mb-6 pb-4 border-b">
           <div className="flex items-center">
-            <Avatar className="h-10 w-10 mr-3">
-              <AvatarImage src="" />
-              <AvatarFallback>
-                {getUserInitials(selectedConversationUser.name || selectedConversationUser.email)}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <h2 className="text-lg font-semibold">
-                {selectedConversationUser.name || selectedConversationUser.email}
-              </h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mr-2"
+              onClick={() => setSelectedConversationUser(null)}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+
+            <div className="flex items-center">
+              <Avatar className="h-10 w-10 mr-3">
+                <AvatarImage src="" />
+                <AvatarFallback>
+                  {getUserInitials(selectedConversationUser.name || selectedConversationUser.email)}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <h2 className="text-lg font-semibold">
+                  {selectedConversationUser.name || selectedConversationUser.email}
+                </h2>
+              </div>
             </div>
           </div>
         </div>
@@ -677,23 +734,35 @@ export default function MessagesPage() {
                           <div className="text-xs mb-1">Attachments:</div>
                           <div className="space-y-2">
                             {msg.attachments.map((attachment, index) => (
-                              <a
-                                key={index}
-                                href={attachment.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center rounded bg-black/10 p-2 hover:bg-black/20 transition-colors"
-                              >
-                                <FileIcon className="h-6 w-6 mr-2" />
-                                <div>
-                                  <div className="text-sm font-medium">{attachment.name}</div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {(attachment.size && attachment.size > 1024 * 1024)
-                                      ? `${(attachment.size / (1024 * 1024)).toFixed(2)} MB`
-                                      : `${((attachment.size || 0) / 1024).toFixed(2)} KB`}
+                              <div key={index} className="flex items-center gap-2">
+                                <a
+                                  href={attachment.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center rounded bg-black/10 p-2 hover:bg-black/20 transition-colors"
+                                >
+                                  <FileIcon className="h-6 w-6 mr-2" />
+                                  <div>
+                                    <div className="text-sm font-medium">{attachment.name}</div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {(attachment.size && attachment.size > 1024 * 1024)
+                                        ? `${(attachment.size / (1024 * 1024)).toFixed(2)} MB`
+                                        : `${((attachment.size || 0) / 1024).toFixed(2)} KB`}
+                                    </div>
                                   </div>
-                                </div>
-                              </a>
+                                </a>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setPreviewFile(attachment);
+                                    setPreviewOpen(true);
+                                  }}
+                                  className="h-8 w-8"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </div>
                             ))}
                           </div>
                         </div>
@@ -716,11 +785,13 @@ export default function MessagesPage() {
                   </div>
                 ))
               )}
+              {/* This div is used as a reference to scroll to the bottom of messages */}
+              <div ref={messagesEndRef}></div>
             </div>
           </ScrollArea>
         </Card>
 
-        <div className="sticky bottom-0">
+        <div className="sticky bottom-0 bg-background pt-2 pb-2 border-t z-10">
           {/* Show attachment preview */}
           {replyAttachments.length > 0 && (
             <div className="bg-background p-2 rounded-t-lg border border-b-0 space-y-2">
@@ -739,6 +810,17 @@ export default function MessagesPage() {
                         </div>
                       </div>
                     </div>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-background opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => {
+                        setPreviewFile(file);
+                        setPreviewOpen(true);
+                      }}
+                    >
+                      <Eye className="h-3 w-3" />
+                    </Button>
                     <Button
                       size="icon"
                       variant="ghost"
@@ -783,6 +865,9 @@ export default function MessagesPage() {
             </Button>
           </form>
         </div>
+        {previewOpen && previewFile && (
+          <FilePreview file={previewFile} isOpen={previewOpen} onClose={() => setPreviewOpen(false)} />
+        )}
       </div>
     )
   }
@@ -822,7 +907,11 @@ export default function MessagesPage() {
                   className={`flex cursor-pointer items-start gap-4 p-4 transition-colors hover:bg-accent/50 ${
                     conversation.unreadCount > 0 ? 'bg-accent/20' : ''
                   }`}
-                  onClick={() => setSelectedConversationUser(conversation.user)}
+                  onClick={() => {
+                    setSelectedConversationUser(conversation.user);
+                    // Explicitly call loadConversation to ensure past messages are loaded
+                    loadConversation(conversation.user);
+                  }}
                 >
                   <Avatar className="h-12 w-12">
                     <AvatarImage src="" />

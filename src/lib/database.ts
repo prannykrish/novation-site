@@ -622,8 +622,8 @@ export const assetService = {
       // Get current user
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError) {
-        console.error('Auth error:', authError);
-        throw authError;
+        console.error('Auth error:', JSON.stringify(authError), authError.message);
+        throw new Error(`Authentication error: ${authError.message}`);
       }
       
       if (!user) {
@@ -656,8 +656,12 @@ export const assetService = {
         .single();
       
       if (error) {
-        console.error('Error creating asset:', error);
-        throw error;
+        console.error('Error creating asset:', JSON.stringify(error), error.message, error.details);
+        throw new Error(`Database error: ${error.message}`);
+      }
+      
+      if (!data) {
+        throw new Error('No data returned from database after insert');
       }
       
       // Process files array if available in the response
@@ -671,7 +675,7 @@ export const assetService = {
             files = data.files;
           }
         } catch (e) {
-          console.error('Error parsing files JSON:', e);
+          console.error('Error parsing files JSON:', e instanceof Error ? e.message : String(e));
         }
       }
       
@@ -693,7 +697,7 @@ export const assetService = {
         folderId: data.folder_id
       } as Asset;
     } catch (error) {
-      console.error('Error in createAsset:', error);
+      console.error('Error in createAsset:', error instanceof Error ? error.message : String(error), error);
       throw error;
     }
   },
@@ -782,8 +786,12 @@ export const assetService = {
         .single();
       
       if (error) {
-        console.error('Error updating asset:', error);
-        throw error;
+        console.error('Error updating asset:', JSON.stringify(error), error.message, error.details);
+        throw new Error(`Database error: ${error.message}`);
+      }
+      
+      if (!data) {
+        throw new Error('No data returned from database after update');
       }
       
       // Process files array if available
@@ -797,7 +805,7 @@ export const assetService = {
             files = data.files;
           }
         } catch (e) {
-          console.error('Error parsing files JSON:', e);
+          console.error('Error parsing files JSON:', e instanceof Error ? e.message : String(e));
         }
       }
       
@@ -819,7 +827,7 @@ export const assetService = {
         folderId: data.folder_id
       } as Asset;
     } catch (error) {
-      console.error('Error in updateAsset:', error);
+      console.error('Error in updateAsset:', error instanceof Error ? error.message : String(error), error);
       throw error;
     }
   },
@@ -876,7 +884,7 @@ export const assetService = {
       // Check if user is authenticated
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError) {
-        console.error('Auth error in uploadFile:', authError);
+        console.error('Auth error in uploadFile:', authError.message, JSON.stringify(authError));
         throw new Error(`Authentication error: ${authError.message}`);
       }
       
@@ -902,7 +910,7 @@ export const assetService = {
         });
       
       if (error) {
-        console.error('Error uploading file:', JSON.stringify(error));
+        console.error('Error uploading file:', error.message, JSON.stringify(error));
         throw new Error(`Upload failed: ${error.message}`);
       }
       
@@ -926,7 +934,7 @@ export const assetService = {
         size: file.size
       };
     } catch (error) {
-      console.error('Error in uploadFile:', error instanceof Error ? error.message : JSON.stringify(error));
+      console.error('Error in uploadFile:', error instanceof Error ? error.message : String(error), error);
       throw error;
     }
   },
@@ -1284,7 +1292,6 @@ export const messageService = {
     try {
       const supabase = getSupabase();
       
-      // Get current user
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError) {
         console.error('Auth error in getMessagesWithAttachments:', authError);
@@ -1292,83 +1299,206 @@ export const messageService = {
       }
       
       if (!user) {
+        console.error('No authenticated user in getMessagesWithAttachments');
         return [];
       }
       
-      // Get messages
+      console.log('Fetching messages for user:', user.id);
+      
+      // First, get all messages for the current user
       const { data: messagesData, error: messagesError } = await supabase
         .from('messages')
         .select(`
-          *,
-          message_attachments(*)
+          id,
+          subject,
+          content,
+          sender_id,
+          recipient_id,
+          related_product_id,
+          related_asset_id,
+          created_at,
+          is_read
         `)
         .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
         .order('created_at', { ascending: false });
       
       if (messagesError) {
-        console.error('Error fetching messages with attachments:', messagesError);
+        console.error('Error fetching messages:', 
+          messagesError.message, 
+          messagesError.details, 
+          JSON.stringify(messagesError)
+        );
         return [];
       }
       
-      // Format messages with attachments
-      return messagesData.map((msg: any) => ({
-        id: msg.id,
-        subject: msg.subject,
-        content: msg.content,
-        senderId: msg.sender_id,
-        recipientId: msg.recipient_id,
-        relatedProductId: msg.related_product_id,
-        relatedAssetId: msg.related_asset_id,
-        createdAt: msg.created_at,
-        isRead: msg.is_read,
-        attachments: msg.message_attachments.map((att: any) => ({
-          id: att.id,
-          url: att.url,
-          name: att.name,
-          type: att.type,
-          size: att.size,
-          messageId: att.message_id
-        }))
-      }));
+      if (!messagesData || !Array.isArray(messagesData)) {
+        console.error('No messages data returned or invalid format');
+        return [];
+      }
+      
+      console.log(`Found ${messagesData.length} messages`);
+      
+      // Get list of unique user IDs from the messages
+      const userIds = new Set<string>();
+      messagesData.forEach((msg: any) => {
+        if (msg.sender_id && msg.sender_id !== user.id) userIds.add(msg.sender_id);
+        if (msg.recipient_id && msg.recipient_id !== user.id) userIds.add(msg.recipient_id);
+      });
+      
+      let userMap = new Map<string, any>();
+      
+      // Only fetch user data if we have user IDs to look up
+      if (userIds.size > 0) {
+        // Fetch user data for all users involved in conversations
+        const userIdsArray = Array.from(userIds);
+        console.log('Looking up user data for:', userIdsArray);
+        
+        const { data: usersData, error: usersError } = await supabase
+          .from('users')
+          .select('id, name, email')
+          .in('id', userIdsArray);
+          
+        if (usersError) {
+          console.error('Error fetching users:', usersError.message, JSON.stringify(usersError));
+          // Continue with message data even if user data fails
+        } else if (usersData) {
+          // Create a map of user data
+          usersData.forEach(userData => {
+            if (userData && userData.id) {
+              userMap.set(userData.id, userData);
+            }
+          });
+          console.log(`Found ${usersData.length} users`);
+        }
+      }
+      
+      // Fetch all attachments for these messages in a single query
+      const messageIds = messagesData.map(msg => msg.id);
+      let attachmentsMap = new Map<string, MessageAttachment[]>();
+      
+      try {
+        const { data: attachmentsData, error: attachmentsError } = await supabase
+          .from('message_attachments')
+          .select('*')
+          .in('message_id', messageIds);
+          
+        if (attachmentsError) {
+          console.error('Error fetching attachments:', attachmentsError);
+        } else if (attachmentsData) {
+          // Group attachments by message_id
+          attachmentsData.forEach(attachment => {
+            const messageId = attachment.message_id;
+            if (!attachmentsMap.has(messageId)) {
+              attachmentsMap.set(messageId, []);
+            }
+            attachmentsMap.get(messageId)?.push({
+              id: attachment.id,
+              url: attachment.url,
+              name: attachment.name,
+              type: attachment.type || '',
+              size: attachment.size || 0
+            });
+          });
+          console.log(`Found attachments for ${attachmentsMap.size} messages`);
+        }
+      } catch (attachmentError) {
+        console.error('Error processing attachments:', attachmentError);
+      }
+      
+      // Format messages with attachments and user data
+      return messagesData.map((msg: any) => {
+        // Safely get user data
+        const getSenderInfo = (field: string) => {
+          if (msg.sender_id !== user.id && userMap.has(msg.sender_id)) {
+            return userMap.get(msg.sender_id)[field] || null;
+          }
+          return null;
+        };
+        
+        const getRecipientInfo = (field: string) => {
+          if (msg.recipient_id !== user.id && userMap.has(msg.recipient_id)) {
+            return userMap.get(msg.recipient_id)[field] || null;
+          }
+          return null;
+        };
+        
+        // Get attachments for this message
+        const attachments = attachmentsMap.get(msg.id) || [];
+        
+        return {
+          id: msg.id,
+          subject: msg.subject || '',
+          content: msg.content,
+          senderId: msg.sender_id,
+          recipientId: msg.recipient_id,
+          relatedProductId: msg.related_product_id,
+          relatedAssetId: msg.related_asset_id,
+          createdAt: msg.created_at,
+          isRead: msg.is_read,
+          senderName: getSenderInfo('name'),
+          senderEmail: getSenderInfo('email'),
+          recipientName: getRecipientInfo('name'),
+          recipientEmail: getRecipientInfo('email'),
+          attachments: attachments
+        };
+      });
     } catch (error) {
-      console.error('Error in getMessagesWithAttachments:', error);
+      // Improved error logging
+      console.error(
+        'Error in getMessagesWithAttachments:', 
+        error instanceof Error ? error.message : 'Unknown error',
+        error instanceof Error && error.stack ? error.stack : '',
+        JSON.stringify(error)
+      );
       return [];
     }
   },
 
-  // Upload a file attachment for messages
+  // Upload attachment for a message
   async uploadAttachment(file: File): Promise<MessageAttachment> {
     try {
       const supabase = getSupabase();
       
-      // Upload the file to storage
+      // Check if user is authenticated
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError) {
+        console.error('Auth error in uploadAttachment:', authError);
+        throw new Error(`Authentication error: ${authError.message}`);
+      }
+      
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+      
+      // Create a sanitized filename with timestamp
       const timestamp = Date.now();
       const fileExt = file.name.split('.').pop();
       const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-      const filePath = `message_attachments/${timestamp}_${sanitizedName}`;
+      const filePath = `message-attachments/${user.id}/${timestamp}-${sanitizedName}`;
       
-      const { error: uploadError, data } = await supabase
+      // Upload file to storage
+      const { data, error } = await supabase
         .storage
-        .from('attachments')
-        .upload(filePath, file);
-        
-      if (uploadError || !data) {
-        console.error('Error uploading attachment:', uploadError);
-        throw new Error('Failed to upload attachment');
+        .from('files')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type
+        });
+      
+      if (error) {
+        console.error('Error uploading attachment:', error);
+        throw new Error(`Attachment upload failed: ${error.message}`);
       }
       
-      // Get the file URL
-      const { data: urlData } = supabase
-        .storage
-        .from('attachments')
-        .getPublicUrl(filePath);
-        
+      // Get the public URL for the file
+      const { data: urlData } = supabase.storage.from('files').getPublicUrl(data.path);
+      
       if (!urlData || !urlData.publicUrl) {
-        console.error('Error getting attachment URL');
-        throw new Error('Failed to get attachment URL');
+        throw new Error('Could not generate public URL for attachment');
       }
       
-      // Return attachment data
+      // Return the attachment data
       return {
         url: urlData.publicUrl,
         name: file.name,
@@ -1376,7 +1506,7 @@ export const messageService = {
         size: file.size
       };
     } catch (error) {
-      console.error('Error in uploadAttachment:', error);
+      console.error('Error in uploadAttachment:', error instanceof Error ? error.message : String(error));
       throw error;
     }
   }
@@ -1847,21 +1977,19 @@ export const userService = {
         return false;
       }
       
+      // If already blocked, return true
       if (count && count > 0) {
-        // User is already blocked
         return true;
       }
       
-      // Block the user
-      const blockData = {
-        blocker_id: user.id,
-        blocked_id: userIdToBlock,
-        blocked_at: new Date().toISOString()
-      };
-      
+      // Create new block record
       const { error: blockError } = await supabase
         .from('blocked_users')
-        .insert(blockData);
+        .insert({
+          blocker_id: user.id,
+          blocked_id: userIdToBlock,
+          created_at: new Date().toISOString()
+        });
         
       if (blockError) {
         console.error('Error blocking user:', blockError);
