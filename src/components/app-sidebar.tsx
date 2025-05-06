@@ -20,6 +20,12 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 // Sample user data
 const userData = {
@@ -64,11 +70,13 @@ export function AppSidebar({
   )
   const [unreadMessageCount, setUnreadMessageCount] = React.useState(0)
   const [lastMessageTime, setLastMessageTime] = React.useState<Date | null>(null)
+  const [recentMessages, setRecentMessages] = React.useState<Message[]>([])
   const { setOpen } = useSidebar()
   const router = useRouter()
   const messageSubscriptionRef = React.useRef<RealtimeChannel | null>(null)
+  const messageDropdownRef = React.useRef<HTMLButtonElement>(null)
 
-  // Fetch unread message count on load
+  // Fetch unread message count and recent messages on load
   React.useEffect(() => {
     const fetchUnreadMessages = async () => {
       try {
@@ -76,11 +84,15 @@ export function AppSidebar({
         const unreadCount = messages.filter(msg => !msg.isRead).length
         setUnreadMessageCount(unreadCount)
         
+        // Store the recent messages for notification dropdown
+        const sortedMessages = [...messages]
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .slice(0, 5) // Only show 5 most recent messages
+        
+        setRecentMessages(sortedMessages)
+        
         // Set the last message time if there are any messages
         if (messages.length > 0) {
-          const sortedMessages = [...messages].sort(
-            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          )
           setLastMessageTime(new Date(sortedMessages[0].createdAt))
         }
       } catch (error) {
@@ -174,6 +186,20 @@ export function AppSidebar({
     return lastMessageTime.toLocaleDateString()
   }
 
+  // Format timestamp to relative time for notification dropdown
+  const formatRelativeTime = (timestamp: string) => {
+    const date = new Date(timestamp)
+    const now = new Date()
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+    
+    if (diffInSeconds < 60) return 'Just now'
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} min ago`
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} days ago`
+    
+    return date.toLocaleDateString()
+  }
+
   return (
     <Sidebar collapsible="icon" className="overflow-hidden [&>[data-sidebar=sidebar]]:flex-row" {...props}>
       {/* Main sidebar */}
@@ -201,27 +227,102 @@ export function AppSidebar({
               <SidebarMenu>
                 {mainNavItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      tooltip={{
-                        children: item.title,
-                        hidden: false,
-                      }}
-                      onClick={() => {
-                        setActiveItem(item)
-                        setOpen(true)
-                        router.push(`/dashboard${item.path}`)
-                      }}
-                      isActive={activeItem?.title === item.title}
-                      className="px-2.5 md:px-2 relative"
-                    >
-                      <item.icon />
-                      <span>{item.title}</span>
-                      {item.title === "Messages" && unreadMessageCount > 0 && (
-                        <span className="absolute right-0 top-0 -mt-1 -mr-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
-                          {unreadMessageCount > 9 ? "9+" : unreadMessageCount}
-                        </span>
-                      )}
-                    </SidebarMenuButton>
+                    {item.title === "Messages" ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <SidebarMenuButton
+                            ref={messageDropdownRef}
+                            tooltip={{
+                              children: item.title,
+                              hidden: false,
+                            }}
+                            isActive={activeItem?.title === item.title}
+                            className="px-2.5 md:px-2 relative"
+                          >
+                            <item.icon />
+                            <span>{item.title}</span>
+                            {unreadMessageCount > 0 && (
+                              <span className="absolute right-0 top-0 -mt-1 -mr-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
+                                {unreadMessageCount > 9 ? "9+" : unreadMessageCount}
+                              </span>
+                            )}
+                          </SidebarMenuButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-80">
+                          <div className="flex items-center justify-between px-3 py-2 border-b">
+                            <h3 className="font-medium">Messages</h3>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => {
+                                setActiveItem(item)
+                                setOpen(true)
+                                router.push(`/dashboard${item.path}`)
+                              }}
+                            >
+                              View All
+                            </Button>
+                          </div>
+                          {recentMessages.length === 0 ? (
+                            <div className="py-6 text-center text-sm text-muted-foreground">
+                              No messages yet
+                            </div>
+                          ) : (
+                            <div className="max-h-[300px] overflow-y-auto">
+                              {recentMessages.map((message) => (
+                                <DropdownMenuItem 
+                                  key={message.id} 
+                                  className={`flex flex-col items-start p-3 ${!message.isRead ? 'bg-primary/5' : ''}`}
+                                  onClick={() => {
+                                    // Navigate to the specific conversation
+                                    router.push(`/dashboard/messages?user=${message.senderId}`)
+                                  }}
+                                >
+                                  <div className="flex w-full justify-between">
+                                    <span className="font-medium">{message.senderName || message.senderEmail || 'Unknown User'}</span>
+                                    <span className="text-xs text-muted-foreground">{formatRelativeTime(message.createdAt)}</span>
+                                  </div>
+                                  <p className="mt-1 text-sm truncate w-full">
+                                    {message.subject ? `${message.subject}: ` : ''}{message.content.substring(0, 50)}{message.content.length > 50 ? '...' : ''}
+                                  </p>
+                                  {!message.isRead && (
+                                    <div className="h-2 w-2 rounded-full bg-primary ml-auto mt-1" />
+                                  )}
+                                </DropdownMenuItem>
+                              ))}
+                            </div>
+                          )}
+                          <div className="p-2 border-t">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="w-full"
+                              onClick={() => router.push('/dashboard/messages?new=true')}
+                            >
+                              <Plus className="mr-2 h-4 w-4" />
+                              New Message
+                            </Button>
+                          </div>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : (
+                      <SidebarMenuButton
+                        tooltip={{
+                          children: item.title,
+                          hidden: false,
+                        }}
+                        onClick={() => {
+                          setActiveItem(item)
+                          setOpen(true)
+                          router.push(`/dashboard${item.path}`)
+                        }}
+                        isActive={activeItem?.title === item.title}
+                        className="px-2.5 md:px-2 relative"
+                      >
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </SidebarMenuButton>
+                    )}
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>

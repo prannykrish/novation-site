@@ -203,7 +203,7 @@ export default function MessagesPage() {
           }
         }
       )
-      // Listen for sent messages - also fix the type here
+      // Listen for sent messages - improve notification to both sides
       .on(
         'postgres_changes' as any,
         {
@@ -212,8 +212,14 @@ export default function MessagesPage() {
           table: 'messages',
           filter: `sender_id=eq.${userId}`
         },
-        async () => {
+        async (payload: RealtimeMessagePayload) => {
+          console.log('Realtime message update (sender):', payload.eventType)
+          
+          // Immediately update UI for sent messages as well
           await handleMessageUpdate()
+          
+          // If the other party also has the app open, they should see the message immediately
+          // This will be handled by their recipient subscription
         }
       )
       .subscribe(status => {
@@ -223,6 +229,31 @@ export default function MessagesPage() {
           console.log('Successfully subscribed to messages channel')
         }
       })
+
+    // Add a subscription that catches all messages in the system
+    // This ensures that we get updates even when message table changes from other users
+    const globalMessagesChannel = supabase
+      .channel('global-messages-channel')
+      .on(
+        'postgres_changes' as any,
+        {
+          event: '*',
+          schema: 'public',
+          table: 'messages'
+        },
+        async (payload: RealtimeMessagePayload) => {
+          // Check if this message is relevant to the current user
+          const isRelevantMessage = 
+            payload.new && 
+            (payload.new.sender_id === userId || payload.new.recipient_id === userId);
+            
+          if (isRelevantMessage) {
+            console.log('Global message update (relevant):', payload.eventType);
+            await handleMessageUpdate();
+          }
+        }
+      )
+      .subscribe()
 
     // Listen for attachment changes to update message content
     const attachmentsChannel = supabase
@@ -244,6 +275,7 @@ export default function MessagesPage() {
     return () => {
       // Clean up subscriptions
       supabase.removeChannel(messagesChannel)
+      supabase.removeChannel(globalMessagesChannel)
       supabase.removeChannel(attachmentsChannel)
       
       // Reset document title when leaving the page
@@ -814,8 +846,9 @@ export default function MessagesPage() {
           </div>
         </div>
 
-        <Card className="flex-1 flex flex-col p-6 mb-4">
-          <ScrollArea className="flex-1 pr-4">
+        {/* Message content area with ScrollArea applied only to messages, not header */}
+        <Card className="flex-1 flex flex-col p-0 mb-4 overflow-hidden">
+          <ScrollArea className="flex-1 p-6">
             <div className="space-y-4">
               {conversationMessages.length === 0 ? (
                 <div className="text-center text-muted-foreground py-8">
