@@ -867,27 +867,22 @@ export default function AssetsPage() {
   const handleDrop = async (itemId: string, itemType: string, targetId?: string) => {
     setLoading(true);
     
-    // Store the dragged items in local variables for potential rollback
-    const draggedAsset = assets.find(asset => asset.id === itemId);
-    const draggedFolder = folders.find(folder => folder.id === itemId);
-
     try {
-      // Immediately remove the item from local state.
+      // First perform the backend operation
       if (itemType === ItemTypes.ASSET) {
-        setAssets(prev => prev.filter(a => a.id !== itemId));
         await assetService.moveAssetToFolder(itemId, targetId || null);
       } else if (itemType === ItemTypes.FOLDER) {
-        setFolders(prev => prev.filter(f => f.id !== itemId));
         await folderService.updateFolder(itemId, { parentId: targetId || undefined });
       }
+      
+      // After successful backend operation, reload the current folder contents
+      // This ensures UI is in sync with the database
+      await loadItems(currentFolder?.id || null);
+      
     } catch (error) {
       console.error(`Error moving ${itemType}:`, error);
-      // Rollback changes if server operations fail
-      if (itemType === ItemTypes.ASSET && draggedAsset) {
-        setAssets(prev => [...prev, draggedAsset]);
-      } else if (itemType === ItemTypes.FOLDER && draggedFolder) {
-        setFolders(prev => [...prev, draggedFolder]);
-      }
+      // Show an error message to the user
+      alert(`Failed to move ${itemType}. Please try again.`);
     } finally {
       setLoading(false);
     }
