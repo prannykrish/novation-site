@@ -20,12 +20,12 @@ export async function GET(req: NextRequest) {
   console.log(`Auth callback triggered. Base URL: ${baseUrl}, Type: ${type}`)
   
   if (code) {
+    // Exchange the code for a session in all cases
     await supabase.auth.exchangeCodeForSession(code)
     
-    // Check if this is a password recovery flow
+    // Special handling for password recovery flows
     if (type === 'recovery') {
       // For password recovery, redirect to the reset page
-      // Include type=recovery in the redirect so the reset page knows it's a valid recovery flow
       return NextResponse.redirect(`${baseUrl}/auth/reset?type=recovery`)
     }
   }

@@ -5,35 +5,33 @@ import type { NextRequest } from 'next/server'
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
   const supabase = createMiddlewareClient({ req, res })
+  const { pathname } = req.nextUrl
   
-  // Refresh session if possible
-  await supabase.auth.getSession()
+  // Check session
+  const { data: { session }} = await supabase.auth.getSession()
   
-  // Get updated session
-  const { data: { session } } = await supabase.auth.getSession()
-  
-  // Auth routes: callback, reset password - these need special handling
-  if (req.nextUrl.pathname.startsWith('/auth/reset')) {
-    // Only allow access to reset page if user has a session
-    // This ensures only users with valid reset links can access
-    if (!session) {
-      return NextResponse.redirect(new URL('/signin', req.url))
-    }
-    return res
-  }
-
-  // Auth callback should be handled by its own route handler
-  if (req.nextUrl.pathname.startsWith('/auth/callback')) {
-    return res
-  }
-  
-  // Protected routes require authentication
-  if (req.nextUrl.pathname.startsWith('/dashboard')) {
-    if (!session) {
-      return NextResponse.redirect(new URL('/signin', req.url))
+  // Special handling for auth/reset routes - allow access if this is a recovery flow
+  if (pathname === '/auth/reset') {
+    const { searchParams } = req.nextUrl
+    const isRecovery = searchParams.get('type') === 'recovery'
+    
+    if (isRecovery) {
+      return res
     }
   }
-
+  
+  // Auth callback should always be accessible
+  if (pathname === '/auth/callback') {
+    return res
+  }
+  
+  // Redirect unauthenticated users for protected routes
+  if (!session && pathname.startsWith('/dashboard')) {
+    const redirectUrl = new URL('/signin', req.url)
+    redirectUrl.searchParams.set('redirect', pathname)
+    return NextResponse.redirect(redirectUrl)
+  }
+  
   return res
 }
 
