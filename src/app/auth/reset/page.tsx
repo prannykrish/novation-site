@@ -1,10 +1,21 @@
-import React from 'react'
+import React, { Suspense } from 'react'
 import { Metadata } from 'next'
 import ResetPasswordForm from './reset-password-form'
 
 export const metadata: Metadata = {
   title: 'Reset Password',
   description: 'Reset your password',
+}
+
+// Loading fallback component
+function ResetFormSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="h-10 w-full bg-muted rounded animate-pulse"></div>
+      <div className="h-10 w-full bg-muted rounded animate-pulse"></div>
+      <div className="h-10 w-full bg-muted rounded animate-pulse"></div>
+    </div>
+  )
 }
 
 export default function ResetPasswordPage() {
@@ -17,7 +28,9 @@ export default function ResetPasswordPage() {
             Enter your new password below
           </p>
         </div>
-        <ResetPasswordForm />
+        <Suspense fallback={<ResetFormSkeleton />}>
+          <ResetPasswordForm />
+        </Suspense>
       </div>
     </div>
   )

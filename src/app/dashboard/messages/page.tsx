@@ -19,6 +19,20 @@ import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { FilePreview } from '@/components/file-preview'
 
+// Define types for realtime message updates
+type RealtimePayload = {
+  new: {
+    id: string;
+    sender_id: string;
+    recipient_id: string;
+    is_read: boolean;
+    subject?: string;
+    content?: string;
+    created_at: string;
+  };
+  eventType: 'INSERT' | 'UPDATE' | 'DELETE';
+}
+
 export default function MessagesPage() {
   const [currentUser, setCurrentUser] = useState<DatabaseUser | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -139,34 +153,53 @@ export default function MessagesPage() {
   // Setup realtime subscription as a separate function for better organization
   const setupRealtimeSubscription = (userId: string) => {
     const supabase = getSupabase()
-
-    // Create a channel for received messages
-    const receivedMessagesChannel = supabase
-      .channel('messages-received')
+    
+    // Create a single channel for all message-related events
+    const messagesChannel = supabase
+      .channel('messages-channel')
+      // Listen for received messages
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: '*',  // Listen to all events (INSERT, UPDATE, DELETE)
           schema: 'public',
           table: 'messages',
           filter: `recipient_id=eq.${userId}`
         },
-        async (payload) => {
-          console.log('Realtime message received:', payload)
-          handleMessageUpdate()
-
-          // Play notification sound for new messages
+        async (payload: RealtimePayload) => {
+          console.log('Realtime message update (recipient):', payload.eventType)
+          
+          // Play notification sound only for new messages
           if (payload.eventType === 'INSERT') {
-            const audio = new Audio('/notification.mp3')
-            audio.play().catch(e => console.log('Audio play prevented:', e))
+            try {
+              const audio = new Audio('/notification.mp3')
+              audio.volume = 0.5 // Set volume to 50%
+              await audio.play().catch(e => console.log('Audio play prevented:', e))
+              
+              // If in another conversation, update the unread count in title
+              if (selectedConversationUser && selectedConversationUser.id !== payload.new.sender_id) {
+                const unreadCount = await messageService.getUnreadMessagesCount()
+                if (unreadCount > 0) {
+                  document.title = `(${unreadCount}) Messages | Shadcnmaxxing`
+                }
+              }
+            } catch (e) {
+              console.log('Error playing notification sound:', e)
+            }
+          }
+          
+          // Efficiently handle message updates
+          await handleMessageUpdate()
+          
+          // Auto-mark as read if currently viewing this conversation
+          if (selectedConversationUser && payload.new && payload.new.sender_id === selectedConversationUser.id) {
+            if (payload.eventType === 'INSERT' && !payload.new.is_read) {
+              await messageService.markAsRead(payload.new.id)
+            }
           }
         }
       )
-      .subscribe()
-
-    // Create a channel for sent messages
-    const sentMessagesChannel = supabase
-      .channel('messages-sent')
+      // Listen for sent messages
       .on(
         'postgres_changes',
         {
@@ -176,15 +209,41 @@ export default function MessagesPage() {
           filter: `sender_id=eq.${userId}`
         },
         async () => {
-          handleMessageUpdate()
+          await handleMessageUpdate()
+        }
+      )
+      .subscribe(status => {
+        if (status !== 'SUBSCRIBED') {
+          console.error('Failed to subscribe to messages channel:', status)
+        } else {
+          console.log('Successfully subscribed to messages channel')
+        }
+      })
+
+    // Listen for attachment changes to update message content
+    const attachmentsChannel = supabase
+      .channel('attachments-channel')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'message_attachments'
+        },
+        async () => {
+          // Only update when we're viewing messages
+          await handleMessageUpdate()
         }
       )
       .subscribe()
 
     return () => {
       // Clean up subscriptions
-      supabase.removeChannel(receivedMessagesChannel)
-      supabase.removeChannel(sentMessagesChannel)
+      supabase.removeChannel(messagesChannel)
+      supabase.removeChannel(attachmentsChannel)
+      
+      // Reset document title when leaving the page
+      document.title = 'Shadcnmaxxing'
     }
   }
 
@@ -193,12 +252,25 @@ export default function MessagesPage() {
     try {
       // Refresh messages - make sure to get messages with attachments
       const updatedMessages = await messageService.getMessagesWithAttachments()
+      
+      // Track if we need to update document title
+      let hasUnreadMessages = false
+      
+      // Update main messages state
       setMessages(updatedMessages)
-      console.log('Messages updated, count:', updatedMessages.length)
+      
+      // Count unread messages
+      const unreadCount = updatedMessages.filter(
+        msg => !msg.isRead && msg.recipientId === currentUser?.id
+      ).length
+      
+      if (unreadCount > 0) {
+        hasUnreadMessages = true
+      }
 
       // If in conversation view, also update conversation messages
       if (selectedConversationUser && currentUser) {
-        // Re-filter messages rather than making another API call
+        // Re-filter messages for this conversation
         const conversationMsgs = updatedMessages.filter(
           msg =>
             (msg.senderId === selectedConversationUser.id && msg.recipientId === currentUser.id) ||
@@ -210,31 +282,50 @@ export default function MessagesPage() {
           (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
         )
 
-        console.log('Conversation updated, messages:', sortedMessages.length)
+        // Update the conversation view
         setConversationMessages(sortedMessages)
-
-        // Mark received messages as read automatically in conversation view
-        const unreadMessages = conversationMsgs.filter(
-          msg => !msg.isRead && msg.senderId === selectedConversationUser.id
+        
+        // Find unread messages from this conversation partner
+        const unreadConversationMessages = conversationMsgs.filter(
+          msg => !msg.isRead && msg.senderId === selectedConversationUser.id && msg.recipientId === currentUser.id
         )
 
-        if (unreadMessages.length > 0) {
+        // If there are unread messages in the current conversation, mark them as read
+        if (unreadConversationMessages.length > 0) {
           try {
-            for (const msg of unreadMessages) {
-              await messageService.markAsRead(msg.id)
-            }
-            // Update local message state to reflect read status
-            setMessages(prevMessages =>
-              prevMessages.map(msg =>
-                unreadMessages.some(unread => unread.id === msg.id)
-                  ? { ...msg, isRead: true }
-                  : msg
+            // Batch update all messages at once
+            const messageIds = unreadConversationMessages.map(msg => msg.id)
+            const success = await messageService.markAsRead(messageIds)
+            
+            // If successful, update local message states
+            if (success) {
+              // Update in both message collections
+              setMessages(prevMessages =>
+                prevMessages.map(msg =>
+                  unreadConversationMessages.some(unread => unread.id === msg.id)
+                    ? { ...msg, isRead: true }
+                    : msg
+                )
               )
-            )
+              
+              setConversationMessages(prevMessages =>
+                prevMessages.map(msg =>
+                  unreadConversationMessages.some(unread => unread.id === msg.id)
+                    ? { ...msg, isRead: true }
+                    : msg
+                )
+              )
+            }
           } catch (error) {
-            console.error('Error marking messages as read:', error)
+            console.error('Error marking conversation messages as read:', error)
           }
         }
+        
+        // Reset document title since we're viewing this conversation
+        document.title = 'Shadcnmaxxing'
+      } else if (hasUnreadMessages) {
+        // Update document title with unread count if we're not in that conversation
+        document.title = `(${unreadCount}) Messages | Shadcnmaxxing`
       }
     } catch (error) {
       console.error('Error in handleMessageUpdate:', error)
@@ -243,23 +334,39 @@ export default function MessagesPage() {
 
   // Mark conversation messages as read
   const markConversationMessagesAsRead = async (conversationMsgs: Message[], otherUserId: string) => {
+    // Find all unread messages from the other user
     const unreadMessages = conversationMsgs.filter(
       msg => !msg.isRead && msg.senderId === otherUserId
     )
 
     if (unreadMessages.length > 0) {
       try {
-        for (const msg of unreadMessages) {
-          await messageService.markAsRead(msg.id)
-        }
-        // Update local message state to reflect read status
-        setMessages(prevMessages =>
-          prevMessages.map(msg =>
-            unreadMessages.some(unread => unread.id === msg.id)
-              ? { ...msg, isRead: true }
-              : msg
+        // Batch update all unread messages at once
+        const messageIds = unreadMessages.map(msg => msg.id)
+        const success = await messageService.markAsRead(messageIds)
+        
+        if (success) {
+          // Update local message state to reflect read status
+          setMessages(prevMessages =>
+            prevMessages.map(msg =>
+              unreadMessages.some(unread => unread.id === msg.id)
+                ? { ...msg, isRead: true }
+                : msg
+            )
           )
-        )
+          
+          // Also update the conversation messages
+          setConversationMessages(prevMessages =>
+            prevMessages.map(msg =>
+              unreadMessages.some(unread => unread.id === msg.id)
+                ? { ...msg, isRead: true }
+                : msg
+            )
+          )
+          
+          // Reset the document title since we've read the messages
+          document.title = 'Shadcnmaxxing'
+        }
       } catch (error) {
         console.error('Error marking messages as read:', error)
       }

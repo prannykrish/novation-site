@@ -1082,24 +1082,42 @@ export const messageService = {
   },
   
   // Mark a message as read
-  async markAsRead(messageId: string): Promise<boolean> {
+  async markAsRead(messageId: string | string[]): Promise<boolean> {
     try {
       const supabase = getSupabase();
       
-      const { error } = await supabase
-        .from('messages')
-        .update({ is_read: true })
-        .eq('id', messageId);
-      
-      if (error) {
-        console.error('Error marking message as read:', error);
-        throw error;
+      // Handle both single message ID and arrays of message IDs
+      if (Array.isArray(messageId)) {
+        // If no message IDs, return early
+        if (messageId.length === 0) return true;
+        
+        // Batch update for multiple messages
+        const { error } = await supabase
+          .from('messages')
+          .update({ is_read: true })
+          .in('id', messageId);
+        
+        if (error) {
+          console.error('Error marking messages as read:', error);
+          throw error;
+        }
+      } else {
+        // Single message update
+        const { error } = await supabase
+          .from('messages')
+          .update({ is_read: true })
+          .eq('id', messageId);
+        
+        if (error) {
+          console.error('Error marking message as read:', error);
+          throw error;
+        }
       }
       
       return true;
     } catch (error) {
       console.error('Error in markAsRead:', error);
-      throw error;
+      return false; // Return false instead of throwing to prevent UI crashes
     }
   },
   
