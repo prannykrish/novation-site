@@ -16,7 +16,13 @@ type MessagePayload = {
     subject?: string;
     content?: string;
   };
+  old: {
+    id: string;
+    is_read: boolean;
+  };
   eventType: 'INSERT' | 'UPDATE' | 'DELETE';
+  schema: string;
+  table: string;
 }
 
 export function MessageNotificationListener() {
@@ -54,7 +60,7 @@ export function MessageNotificationListener() {
         const channel = supabase
           .channel('global-message-notifications')
           .on(
-            'postgres_changes',
+            'postgres_changes' as const,
             {
               event: 'INSERT',
               schema: 'public',
@@ -153,7 +159,7 @@ export function MessageNotificationListener() {
         const readChannel = supabase
           .channel('read-status-updates')
           .on(
-            'postgres_changes',
+            'postgres_changes' as const,
             {
               event: 'UPDATE',
               schema: 'public',

@@ -19,7 +19,7 @@ import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { FilePreview } from '@/components/file-preview'
 
-// Define types for realtime message updates
+// Update the RealtimePayload type to match Supabase's expected format
 type RealtimePayload = {
   new: {
     id: string;
@@ -30,7 +30,13 @@ type RealtimePayload = {
     content?: string;
     created_at: string;
   };
+  old: {
+    id: string;
+    is_read: boolean;
+  };
   eventType: 'INSERT' | 'UPDATE' | 'DELETE';
+  schema: string;
+  table: string;
 }
 
 export default function MessagesPage() {
@@ -159,9 +165,10 @@ export default function MessagesPage() {
       .channel('messages-channel')
       // Listen for received messages
       .on(
-        'postgres_changes',
+        // Fix the type by using the correct parameter type
+        'postgres_changes' as const,
         {
-          event: '*',  // Listen to all events (INSERT, UPDATE, DELETE)
+          event: '*',
           schema: 'public',
           table: 'messages',
           filter: `recipient_id=eq.${userId}`
@@ -199,9 +206,9 @@ export default function MessagesPage() {
           }
         }
       )
-      // Listen for sent messages
+      // Listen for sent messages - also fix the type here
       .on(
-        'postgres_changes',
+        'postgres_changes' as const,
         {
           event: '*',
           schema: 'public',
@@ -224,7 +231,7 @@ export default function MessagesPage() {
     const attachmentsChannel = supabase
       .channel('attachments-channel')
       .on(
-        'postgres_changes',
+        'postgres_changes' as const,
         {
           event: '*',
           schema: 'public',
