@@ -1,11 +1,13 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Eye, EyeOff } from "lucide-react"
 
 export default function ResetPasswordForm() {
   const supabase = createClientComponentClient()
@@ -16,6 +18,34 @@ export default function ResetPasswordForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [validRecovery, setValidRecovery] = useState(false)
+
+  // Check if this is a valid recovery session
+  useEffect(() => {
+    const checkSession = async () => {
+      // First check if we have the recovery type in URL params
+      const isRecovery = searchParams.get('type') === 'recovery'
+      
+      if (!isRecovery) {
+        setError('Invalid password reset link. Please request a new one.')
+        return
+      }
+      
+      // Verify the user has an active session
+      const { data } = await supabase.auth.getSession()
+      
+      if (!data.session?.user) {
+        setError('Your password reset link has expired. Please request a new one.')
+        return
+      }
+      
+      setValidRecovery(true)
+    }
+    
+    checkSession()
+  }, [searchParams, supabase.auth])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -23,9 +53,9 @@ export default function ResetPasswordForm() {
     setError(null)
 
     try {
-      // Check if this is a recovery flow
-      if (searchParams.get('type') !== 'recovery') {
-        setError('Invalid password reset link')
+      // Validate recovery state
+      if (!validRecovery) {
+        setError('Invalid password reset session')
         return
       }
 
@@ -51,7 +81,7 @@ export default function ResetPasswordForm() {
       setSuccess(true)
       // Redirect after 3 seconds
       setTimeout(() => {
-        router.push('/signin')
+        router.push('/dashboard')
       }, 3000)
     } catch (err: any) {
       setError(err.message)
@@ -66,44 +96,66 @@ export default function ResetPasswordForm() {
         {success ? (
           <div className="text-center p-4">
             <h3 className="text-lg font-medium text-green-600 mb-2">Password Updated Successfully!</h3>
-            <p className="text-sm text-gray-500">Redirecting you to login...</p>
+            <p className="text-sm text-gray-500">Redirecting you to dashboard...</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 p-3 rounded-md text-sm">
-                {error}
-              </div>
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
             )}
             
             <div className="space-y-2">
               <Label htmlFor="new-password">New Password</Label>
-              <Input 
-                id="new-password"
-                type="password" 
-                value={newPassword} 
-                onChange={e => setNewPassword(e.target.value)} 
-                required
-                placeholder="Enter new password"
-              />
+              <div className="relative">
+                <Input 
+                  id="new-password"
+                  type={showPassword ? "text" : "password"} 
+                  value={newPassword} 
+                  onChange={e => setNewPassword(e.target.value)} 
+                  required
+                  placeholder="Enter new password"
+                  disabled={!validRecovery}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-3 flex items-center text-muted-foreground"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  <span className="sr-only">Toggle password visibility</span>
+                </button>
+              </div>
             </div>
             
             <div className="space-y-2">
               <Label htmlFor="confirm-password">Confirm Password</Label>
-              <Input 
-                id="confirm-password"
-                type="password" 
-                value={confirmPassword} 
-                onChange={e => setConfirmPassword(e.target.value)} 
-                required
-                placeholder="Confirm new password"
-              />
+              <div className="relative">
+                <Input 
+                  id="confirm-password"
+                  type={showConfirmPassword ? "text" : "password"} 
+                  value={confirmPassword} 
+                  onChange={e => setConfirmPassword(e.target.value)} 
+                  required
+                  placeholder="Confirm new password"
+                  disabled={!validRecovery}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute inset-y-0 right-3 flex items-center text-muted-foreground"
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  <span className="sr-only">Toggle confirm password visibility</span>
+                </button>
+              </div>
             </div>
             
             <Button 
               type="submit" 
               className="w-full" 
-              disabled={loading}
+              disabled={loading || !validRecovery}
             >
               {loading ? 'Updating...' : 'Reset Password'}
             </Button>

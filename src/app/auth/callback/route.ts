@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   
   // Use NEXT_PUBLIC_URL if available (recommended approach)
   const baseUrl = process.env.NEXT_PUBLIC_URL || `${protocol}://${host}`
-  console.log(`Auth callback triggered. Base URL: ${baseUrl}`)
+  console.log(`Auth callback triggered. Base URL: ${baseUrl}, Type: ${type}`)
   
   if (code) {
     await supabase.auth.exchangeCodeForSession(code)
@@ -25,7 +25,8 @@ export async function GET(req: NextRequest) {
     // Check if this is a password recovery flow
     if (type === 'recovery') {
       // For password recovery, redirect to the reset page
-      return NextResponse.redirect(`${baseUrl}/auth/reset`)
+      // Include type=recovery in the redirect so the reset page knows it's a valid recovery flow
+      return NextResponse.redirect(`${baseUrl}/auth/reset?type=recovery`)
     }
   }
   
