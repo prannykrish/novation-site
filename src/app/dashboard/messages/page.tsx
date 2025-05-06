@@ -18,26 +18,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { FilePreview } from '@/components/file-preview'
+import { RealtimeChannel } from '@supabase/supabase-js'
 
-// Update the RealtimePayload type to match Supabase's expected format
-type RealtimePayload = {
+// Define a proper type for the message payload
+type RealtimeMessagePayload = {
   new: {
     id: string;
     sender_id: string;
     recipient_id: string;
     is_read: boolean;
-    subject?: string;
-    content?: string;
+    subject: string;
+    content: string;
     created_at: string;
   };
-  old: {
-    id: string;
-    is_read: boolean;
-  };
+  old: Record<string, any> | null;
   eventType: 'INSERT' | 'UPDATE' | 'DELETE';
   schema: string;
   table: string;
-}
+};
 
 export default function MessagesPage() {
   const [currentUser, setCurrentUser] = useState<DatabaseUser | null>(null)
@@ -163,17 +161,16 @@ export default function MessagesPage() {
     // Create a single channel for all message-related events
     const messagesChannel = supabase
       .channel('messages-channel')
-      // Listen for received messages
+      // Listen for received messages - use type assertion to fix TypeScript error
       .on(
-        // Fix the type by using the correct parameter type
-        'postgres_changes' as const,
+        'postgres_changes' as any,
         {
-          event: '*',
+          event: '*',  // Listen to all events (INSERT, UPDATE, DELETE)
           schema: 'public',
           table: 'messages',
           filter: `recipient_id=eq.${userId}`
         },
-        async (payload: RealtimePayload) => {
+        async (payload: RealtimeMessagePayload) => {
           console.log('Realtime message update (recipient):', payload.eventType)
           
           // Play notification sound only for new messages
@@ -208,7 +205,7 @@ export default function MessagesPage() {
       )
       // Listen for sent messages - also fix the type here
       .on(
-        'postgres_changes' as const,
+        'postgres_changes' as any,
         {
           event: '*',
           schema: 'public',
@@ -231,7 +228,7 @@ export default function MessagesPage() {
     const attachmentsChannel = supabase
       .channel('attachments-channel')
       .on(
-        'postgres_changes' as const,
+        'postgres_changes' as any,
         {
           event: '*',
           schema: 'public',

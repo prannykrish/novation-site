@@ -5,21 +5,19 @@ import { getSupabase } from '@/lib/supabase'
 import { messageService } from '@/lib/database'
 import { useRouter, usePathname } from 'next/navigation'
 import { toast } from 'sonner'
+import { RealtimeChannel } from '@supabase/supabase-js'
 
-// Define types for Supabase realtime payload
-type MessagePayload = {
+// Define proper message payload type
+type RealtimeMessagePayload = {
   new: {
     id: string;
     sender_id: string;
     recipient_id: string;
     is_read: boolean;
-    subject?: string;
-    content?: string;
+    subject: string;
+    content: string;
   };
-  old: {
-    id: string;
-    is_read: boolean;
-  };
+  old: Record<string, any> | null;
   eventType: 'INSERT' | 'UPDATE' | 'DELETE';
   schema: string;
   table: string;
@@ -57,17 +55,17 @@ export function MessageNotificationListener() {
         setCurrentUserId(userId)
         
         // Create channel for real-time message notifications
-        const channel = supabase
+        const channel: RealtimeChannel = supabase
           .channel('global-message-notifications')
           .on(
-            'postgres_changes' as const,
+            'postgres_changes' as any,
             {
               event: 'INSERT',
               schema: 'public',
               table: 'messages',
               filter: `recipient_id=eq.${userId}`
             },
-            async (payload: MessagePayload) => {
+            async (payload: RealtimeMessagePayload) => {
               const senderId = payload.new.sender_id
               const messageId = payload.new.id
               
@@ -156,10 +154,10 @@ export function MessageNotificationListener() {
           })
           
         // Listen for messages being marked as read
-        const readChannel = supabase
+        const readChannel: RealtimeChannel = supabase
           .channel('read-status-updates')
           .on(
-            'postgres_changes' as const,
+            'postgres_changes' as any,
             {
               event: 'UPDATE',
               schema: 'public',
