@@ -28,6 +28,12 @@ export async function GET(req: NextRequest) {
       // For password recovery, redirect to the reset page
       return NextResponse.redirect(`${baseUrl}/auth/reset?type=recovery`)
     }
+    
+    // Handle email verification flow
+    if (type === 'email_verification' || type === 'signup') {
+      // For email verification, redirect to the verify page
+      return NextResponse.redirect(`${baseUrl}/auth/verify?type=${type}`)
+    }
   }
   
   // For normal sign-in/sign-up flows, redirect to dashboard
