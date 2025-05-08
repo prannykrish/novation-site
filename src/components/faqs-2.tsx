@@ -8,12 +8,12 @@ export default function FAQsTwo() {
         {
             id: 'item-1',
             question: 'What is Novation?',
-answer: 'Novation is a risk analysis tool that predicts the likelihood of confusion for any name or design idea a user has for their product or business. It allows for anyone with any level of trademark knowledge to research trademark insights at a high level and have a clear understanding on the legal risks of any brand asset. The analysis that Novation provides is informational only and is not a substitute for legal advice.',
+answer: 'Novation is a risk analysis tool that predicts the likelihood of confusion for any name or design idea a user has for their product or business. It allows users with any level of trademark knowledge to research trademark insights and see the legal risks of any brand asset. The analysis that Novation provides is informational only and is not a substitute for legal advice.',
         },
         {
             id: 'item-2',
             question: 'How does Novation work?',
-            answer: 'Users can come onto our platform with mark ideas they have or speak to our AI to curate unique names according to their specific needs. Through a comprehensive analysis, Novation can predict likelihood of confusion and provide its reasoning, statistics & analysis, and the sources it used. It allows users to conduct a quick clearance search and see a comprehensive analysis in a format that anyone could understand. The analysis that Novation provides is informational only and not a substitute for legal advice.',
+            answer: 'Through a comprehensive analysis, Novation predicts likelihood of confusion and provide its reasoning, statistics & analysis, and an audit trail. It lets users conduct a quick clearance search and see a comprehensive analysis in an easy-to-read format.',
         },
         {
             id: 'item-3',
@@ -28,7 +28,7 @@ answer: 'Novation is a risk analysis tool that predicts the likelihood of confus
         {
             id: 'item-5',
             question: 'Does Novation support enterprise clients?',
-            answer: <>Novation currently supports small businesses; however, it currently does not offer enterprise plans. For custom pricing or requests, please email <span className="font-bold">info@novationapp.com</span></>,
+            answer: <>For enterprise plan requests or purchase, please email <span className="font-bold">info@novationapp.com</span>.  See pricing for more information.</>,
         },
 {
             id: 'item-6',
