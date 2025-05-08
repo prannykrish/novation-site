@@ -1185,136 +1185,140 @@ export default function AssetsPage() {
         
         {/* Create Asset Dialog */}
         <Dialog open={showAddAssetDialog} onOpenChange={setShowAddAssetDialog}>
-          <DialogContent className="sm:max-w-[525px]">
-            <DialogHeader>
+          <DialogContent className="flex flex-col sm:max-w-[525px] max-h-[85vh] overflow-hidden p-0">
+            <DialogHeader className="px-6 pt-6 pb-2">
               <DialogTitle>Create New Asset</DialogTitle>
               <DialogDescription>
                 Enter the details of your asset. Name and type are required.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="name">Asset Name*</Label>
-                <Input
-                  id="name"
-                  value={newAsset.name}
-                  onChange={(e) => setNewAsset({ ...newAsset, name: e.target.value })}
-                  placeholder="Enter asset name"
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="type">Asset Type*</Label>
-                <Select
-                  value={newAsset.type}
-                  onValueChange={(value) => setNewAsset({ ...newAsset, type: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select asset type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DEFAULT_ASSET_TYPES.map((type) => (
-                      <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={newAsset.description}
-                  onChange={(e) => setNewAsset({ ...newAsset, description: e.target.value })}
-                  placeholder="Enter asset description"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="category">Category</Label>
-                <Select
-                  value={newAsset.category}
-                  onValueChange={(value) => setNewAsset({ ...newAsset, category: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DEFAULT_CATEGORIES.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="tags">Tags (comma separated)</Label>
-                <Input
-                  id="tags"
-                  value={newAsset.tags}
-                  onChange={(e) => setNewAsset({ ...newAsset, tags: e.target.value })}
-                  placeholder="design, logo, marketing"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox 
-                  id="isPublic" 
-                  checked={newAsset.isPublic}
-                  onCheckedChange={(checked) => 
-                    setNewAsset({ ...newAsset, isPublic: Boolean(checked) })
-                  }
-                />
-                <Label htmlFor="isPublic">
-                  Allow others to use this asset
-                </Label>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="usageStartDate">Usage Start Date</Label>
-                  <Input
-                    id="usageStartDate"
-                    type="date"
-                    value={newAsset.usageStartDate}
-                    onChange={(e) => setNewAsset({ ...newAsset, usageStartDate: e.target.value })}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="usageEndDate">Usage End Date</Label>
-                  <Input
-                    id="usageEndDate"
-                    type="date"
-                    value={newAsset.usageEndDate}
-                    onChange={(e) => setNewAsset({ ...newAsset, usageEndDate: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="fileUpload">Upload Files</Label>
-                <input
-                  id="fileUpload"
-                  type="file"
-                  multiple
-                  ref={fileInputRef}
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-                <Button
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={fileUploading}
-                >
-                  {fileUploading ? "Uploading..." : "Choose Files"}
-                </Button>
-                <div className="mt-2 space-y-1">
-                  {uploadedFiles.map((file, index) => (
-                    <div key={index} className="text-sm flex items-center justify-between">
-                      <span>{file.name}</span>
-                      <Button variant="ghost" size="icon" onClick={() => handleRemoveFile(index)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+            <div className="flex-grow overflow-y-auto">
+              <ScrollArea className="h-full px-6">
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="name">Asset Name*</Label>
+                    <Input
+                      id="name"
+                      value={newAsset.name}
+                      onChange={(e) => setNewAsset({ ...newAsset, name: e.target.value })}
+                      placeholder="Enter asset name"
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="type">Asset Type*</Label>
+                    <Select
+                      value={newAsset.type}
+                      onValueChange={(value) => setNewAsset({ ...newAsset, type: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select asset type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DEFAULT_ASSET_TYPES.map((type) => (
+                          <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="description">Description</Label>
+                    <Textarea
+                      id="description"
+                      value={newAsset.description}
+                      onChange={(e) => setNewAsset({ ...newAsset, description: e.target.value })}
+                      placeholder="Enter asset description"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="category">Category</Label>
+                    <Select
+                      value={newAsset.category}
+                      onValueChange={(value) => setNewAsset({ ...newAsset, category: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category (optional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DEFAULT_CATEGORIES.map((category) => (
+                          <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="tags">Tags (comma separated)</Label>
+                    <Input
+                      id="tags"
+                      value={newAsset.tags}
+                      onChange={(e) => setNewAsset({ ...newAsset, tags: e.target.value })}
+                      placeholder="design, logo, marketing"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox 
+                      id="isPublic" 
+                      checked={newAsset.isPublic}
+                      onCheckedChange={(checked) => 
+                        setNewAsset({ ...newAsset, isPublic: Boolean(checked) })
+                      }
+                    />
+                    <Label htmlFor="isPublic">
+                      Allow others to use this asset
+                    </Label>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="usageStartDate">Usage Start Date</Label>
+                      <Input
+                        id="usageStartDate"
+                        type="date"
+                        value={newAsset.usageStartDate}
+                        onChange={(e) => setNewAsset({ ...newAsset, usageStartDate: e.target.value })}
+                      />
                     </div>
-                  ))}
+                    <div className="grid gap-2">
+                      <Label htmlFor="usageEndDate">Usage End Date</Label>
+                      <Input
+                        id="usageEndDate"
+                        type="date"
+                        value={newAsset.usageEndDate}
+                        onChange={(e) => setNewAsset({ ...newAsset, usageEndDate: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="fileUpload">Upload Files</Label>
+                    <input
+                      id="fileUpload"
+                      type="file"
+                      multiple
+                      ref={fileInputRef}
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={fileUploading}
+                    >
+                      {fileUploading ? "Uploading..." : "Choose Files"}
+                    </Button>
+                    <div className="mt-2 space-y-1">
+                      {uploadedFiles.map((file, index) => (
+                        <div key={index} className="text-sm flex items-center justify-between">
+                          <span>{file.name}</span>
+                          <Button variant="ghost" size="icon" onClick={() => handleRemoveFile(index)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              </ScrollArea>
             </div>
-            <DialogFooter>
+            <DialogFooter className="px-6 py-4 border-t">
               <Button variant="outline" onClick={() => setShowAddAssetDialog(false)}>Cancel</Button>
               <Button onClick={handleCreateAsset} disabled={loading}>
                 {loading ? "Creating..." : "Create Asset"}
@@ -1325,34 +1329,38 @@ export default function AssetsPage() {
         
         {/* Create Folder Dialog */}
         <Dialog open={showAddFolderDialog} onOpenChange={setShowAddFolderDialog}>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
+          <DialogContent className="flex flex-col sm:max-w-[425px] max-h-[85vh] overflow-hidden p-0">
+            <DialogHeader className="px-6 pt-6 pb-2">
               <DialogTitle>Create New Folder</DialogTitle>
               <DialogDescription>Enter a name for your new folder.</DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="folderName">Folder Name*</Label>
-                <Input
-                  id="folderName"
-                  value={newFolder.name}
-                  onChange={(e) => setNewFolder({ ...newFolder, name: e.target.value })}
-                  placeholder="Enter folder name"
-                  autoFocus
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="folderDescription">Description (optional)</Label>
-                <Textarea
-                  id="folderDescription"
-                  value={newFolder.description}
-                  onChange={(e) => setNewFolder({ ...newFolder, description: e.target.value })}
-                  placeholder="Enter an optional description"
-                  rows={3}
-                />
-              </div>
+            <div className="flex-grow overflow-y-auto">
+              <ScrollArea className="h-full px-6">
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="folderName">Folder Name*</Label>
+                    <Input
+                      id="folderName"
+                      value={newFolder.name}
+                      onChange={(e) => setNewFolder({ ...newFolder, name: e.target.value })}
+                      placeholder="Enter folder name"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="folderDescription">Description (optional)</Label>
+                    <Textarea
+                      id="folderDescription"
+                      value={newFolder.description}
+                      onChange={(e) => setNewFolder({ ...newFolder, description: e.target.value })}
+                      placeholder="Enter an optional description"
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              </ScrollArea>
             </div>
-            <DialogFooter>
+            <DialogFooter className="px-6 py-4 border-t">
               <Button variant="outline" onClick={() => setShowAddFolderDialog(false)}>
                 Cancel
               </Button>
@@ -1365,139 +1373,140 @@ export default function AssetsPage() {
         
         {/* Edit Asset Dialog */}
         <Dialog open={showEditAssetDialog} onOpenChange={setShowEditAssetDialog}>
-          <DialogContent className="sm:max-w-[525px] flex flex-col max-h-[85vh]">
-            <DialogHeader>
+          <DialogContent className="flex flex-col sm:max-w-[525px] max-h-[85vh] overflow-hidden p-0">
+            <DialogHeader className="px-6 pt-6 pb-2">
               <DialogTitle>Edit Asset</DialogTitle>
               <DialogDescription>
                 Update the details of your asset.
               </DialogDescription>
             </DialogHeader>
-            <div className="flex-grow overflow-y-auto pr-1">
-              <div className="grid gap-4 py-4">
-                {/* Same form fields as Create Asset Dialog */}
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-name">Asset Name*</Label>
-                  <Input
-                    id="edit-name"
-                    value={newAsset.name}
-                    onChange={(e) => setNewAsset({ ...newAsset, name: e.target.value })}
-                    placeholder="Enter asset name"
-                    required
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-type">Asset Type*</Label>
-                  <Select
-                    value={newAsset.type}
-                    onValueChange={(value) => setNewAsset({ ...newAsset, type: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select asset type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DEFAULT_ASSET_TYPES.map((type) => (
-                        <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-description">Description</Label>
-                  <Textarea
-                    id="edit-description"
-                    value={newAsset.description}
-                    onChange={(e) => setNewAsset({ ...newAsset, description: e.target.value })}
-                    placeholder="Enter asset description"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-category">Category</Label>
-                  <Select
-                    value={newAsset.category}
-                    onValueChange={(value) => setNewAsset({ ...newAsset, category: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category (optional)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DEFAULT_CATEGORIES.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-tags">Tags (comma separated)</Label>
-                  <Input
-                    id="edit-tags"
-                    value={newAsset.tags}
-                    onChange={(e) => setNewAsset({ ...newAsset, tags: e.target.value })}
-                    placeholder="design, logo, marketing"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <Checkbox 
-                    id="edit-isPublic" 
-                    checked={newAsset.isPublic}
-                    onCheckedChange={(checked) => 
-                      setNewAsset({ ...newAsset, isPublic: Boolean(checked) })
-                    }
-                  />
-                  <Label htmlFor="edit-isPublic">
-                    Allow others to use this asset
-                  </Label>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+            <div className="flex-grow overflow-y-auto">
+              <ScrollArea className="h-full px-6">
+                <div className="grid gap-4 py-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="edit-usageStartDate">Usage Start Date</Label>
+                    <Label htmlFor="edit-name">Asset Name*</Label>
                     <Input
-                      id="edit-usageStartDate"
-                      type="date"
-                      value={newAsset.usageStartDate}
-                      onChange={(e) => setNewAsset({ ...newAsset, usageStartDate: e.target.value })}
+                      id="edit-name"
+                      value={newAsset.name}
+                      onChange={(e) => setNewAsset({ ...newAsset, name: e.target.value })}
+                      placeholder="Enter asset name"
+                      required
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="edit-usageEndDate">Usage End Date</Label>
-                    <Input
-                      id="edit-usageEndDate"
-                      type="date"
-                      value={newAsset.usageEndDate}
-                      onChange={(e) => setNewAsset({ ...newAsset, usageEndDate: e.target.value })}
+                    <Label htmlFor="edit-type">Asset Type*</Label>
+                    <Select
+                      value={newAsset.type}
+                      onValueChange={(value) => setNewAsset({ ...newAsset, type: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select asset type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DEFAULT_ASSET_TYPES.map((type) => (
+                          <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-description">Description</Label>
+                    <Textarea
+                      id="edit-description"
+                      value={newAsset.description}
+                      onChange={(e) => setNewAsset({ ...newAsset, description: e.target.value })}
+                      placeholder="Enter asset description"
                     />
                   </div>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-fileUpload">Upload Files</Label>
-                  <input
-                    id="edit-fileUpload"
-                    type="file"
-                    multiple
-                    ref={editFileInputRef}
-                    onChange={handleEditFileUpload}
-                    className="hidden"
-                  />
-                  <Button
-                    variant="outline"
-                    onClick={() => editFileInputRef.current?.click()}
-                    disabled={fileUploading}
-                  >
-                    {fileUploading ? "Uploading..." : "Choose Files"}
-                  </Button>
-                  <div className="mt-2 space-y-1">
-                    {editUploadedFiles.map((file, index) => (
-                      <div key={index} className="text-sm flex items-center justify-between">
-                        <span>{file.name}</span>
-                        <Button variant="ghost" size="icon" onClick={() => handleRemoveEditFile(index)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    ))}
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-category">Category</Label>
+                    <Select
+                      value={newAsset.category}
+                      onValueChange={(value) => setNewAsset({ ...newAsset, category: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category (optional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DEFAULT_CATEGORIES.map((category) => (
+                          <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-tags">Tags (comma separated)</Label>
+                    <Input
+                      id="edit-tags"
+                      value={newAsset.tags}
+                      onChange={(e) => setNewAsset({ ...newAsset, tags: e.target.value })}
+                      placeholder="design, logo, marketing"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox 
+                      id="edit-isPublic" 
+                      checked={newAsset.isPublic}
+                      onCheckedChange={(checked) => 
+                        setNewAsset({ ...newAsset, isPublic: Boolean(checked) })
+                      }
+                    />
+                    <Label htmlFor="edit-isPublic">
+                      Allow others to use this asset
+                    </Label>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-usageStartDate">Usage Start Date</Label>
+                      <Input
+                        id="edit-usageStartDate"
+                        type="date"
+                        value={newAsset.usageStartDate}
+                        onChange={(e) => setNewAsset({ ...newAsset, usageStartDate: e.target.value })}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-usageEndDate">Usage End Date</Label>
+                      <Input
+                        id="edit-usageEndDate"
+                        type="date"
+                        value={newAsset.usageEndDate}
+                        onChange={(e) => setNewAsset({ ...newAsset, usageEndDate: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-fileUpload">Upload Files</Label>
+                    <input
+                      id="edit-fileUpload"
+                      type="file"
+                      multiple
+                      ref={editFileInputRef}
+                      onChange={handleEditFileUpload}
+                      className="hidden"
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={() => editFileInputRef.current?.click()}
+                      disabled={fileUploading}
+                    >
+                      {fileUploading ? "Uploading..." : "Choose Files"}
+                    </Button>
+                    <div className="mt-2 space-y-1">
+                      {editUploadedFiles.map((file, index) => (
+                        <div key={index} className="text-sm flex items-center justify-between">
+                          <span>{file.name}</span>
+                          <Button variant="ghost" size="icon" onClick={() => handleRemoveEditFile(index)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
+              </ScrollArea>
             </div>
-            <div className="border-t mt-4 pt-4 flex justify-end gap-2 sticky bottom-0 bg-background">
+            <DialogFooter className="px-6 py-4 border-t">
               <Button variant="outline" onClick={() => setShowEditAssetDialog(false)}>Cancel</Button>
               <Button 
                 onClick={handleEditAsset} 
@@ -1506,40 +1515,44 @@ export default function AssetsPage() {
               >
                 {loading ? "Saving..." : "Save Changes"}
               </Button>
-            </div>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
         
         {/* Edit Folder Dialog */}
         <Dialog open={showEditFolderDialog} onOpenChange={setShowEditFolderDialog}>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
+          <DialogContent className="flex flex-col sm:max-w-[425px] max-h-[85vh] overflow-hidden p-0">
+            <DialogHeader className="px-6 pt-6 pb-2">
               <DialogTitle>Edit Folder</DialogTitle>
               <DialogDescription>Update the name or description of this folder.</DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="editFolderName">Folder Name*</Label>
-                <Input
-                  id="editFolderName"
-                  value={newFolder.name}
-                  onChange={(e) => setNewFolder({ ...newFolder, name: e.target.value })}
-                  placeholder="Enter folder name"
-                  autoFocus
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="editFolderDescription">Description (optional)</Label>
-                <Textarea
-                  id="editFolderDescription"
-                  value={newFolder.description}
-                  onChange={(e) => setNewFolder({ ...newFolder, description: e.target.value })}
-                  placeholder="Enter an optional description"
-                  rows={3}
-                />
-              </div>
+            <div className="flex-grow overflow-y-auto">
+              <ScrollArea className="h-full px-6">
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="editFolderName">Folder Name*</Label>
+                    <Input
+                      id="editFolderName"
+                      value={newFolder.name}
+                      onChange={(e) => setNewFolder({ ...newFolder, name: e.target.value })}
+                      placeholder="Enter folder name"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="editFolderDescription">Description (optional)</Label>
+                    <Textarea
+                      id="editFolderDescription"
+                      value={newFolder.description}
+                      onChange={(e) => setNewFolder({ ...newFolder, description: e.target.value })}
+                      placeholder="Enter an optional description"
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              </ScrollArea>
             </div>
-            <DialogFooter>
+            <DialogFooter className="px-6 py-4 border-t">
               <Button variant="outline" onClick={() => setShowEditFolderDialog(false)}>
                 Cancel
               </Button>
@@ -1602,160 +1615,158 @@ export default function AssetsPage() {
 
         {/* Expand Folder/Asset Dialog */}
         <Dialog open={showExpandDialog} onOpenChange={setShowExpandDialog}>
-          <DialogContent className="sm:max-w-[550px] max-h-[80vh] p-0 overflow-hidden">
+          <DialogContent className="flex flex-col sm:max-w-[550px] max-h-[85vh] overflow-hidden p-0">
             <DialogHeader className="px-6 pt-6 pb-2">
               <DialogTitle className="truncate">
                 {expandedFolder ? 'Folder: ' : 'Asset: '}
                 {truncateText(expandedFolder?.name || expandedAsset?.name, 40)}
               </DialogTitle>
             </DialogHeader>
-            <ScrollArea className="max-h-[calc(80vh-8rem)] px-6">
-              <div className="py-4 space-y-4">
-                {/* Folder details */}
-                {expandedFolder && (
-                  <>
-                    {expandedFolder.description && (
-                      <>
-                        <h3 className="font-medium">Description</h3>
-                        <p className="whitespace-pre-wrap break-words">{expandedFolder.description}</p>
-                      </>
-                    )}
-                  </>
-                )}
+            <div className="flex-grow overflow-y-auto">
+              <ScrollArea className="h-full px-6">
+                <div className="py-4 space-y-4">
+                  {/* Folder details */}
+                  {expandedFolder && (
+                    <>
+                      {expandedFolder.description && (
+                        <>
+                          <h3 className="font-medium">Description</h3>
+                          <p className="whitespace-pre-wrap break-words">{expandedFolder.description}</p>
+                        </>
+                      )}
+                    </>
+                  )}
 
-                {/* Asset details */}
-                {expandedAsset && (
-                  <>
-                    {expandedAsset.description && (
-                      <>
-                        <h3 className="font-medium">Description</h3>
-                        <p className="whitespace-pre-wrap break-words">{expandedAsset.description}</p>
-                      </>
-                    )}
-                    {expandedAsset.category && (
-                      <div>
-                        <h3 className="font-medium">Category</h3>
-                        <p>{expandedAsset.category}</p>
-                      </div>
-                    )}
-                    {expandedAsset.tags && expandedAsset.tags.length > 0 && (
-                      <div>
-                        <h3 className="font-medium">Tags</h3>
-                        <div className="flex flex-wrap gap-2 mt-1">
-                          {expandedAsset.tags.map((tag, i) => (
-                            <span key={i} className="bg-muted px-2 py-1 text-sm rounded">
-                              {tag}
-                            </span>
-                          ))}
+                  {/* Asset details */}
+                  {expandedAsset && (
+                    <>
+                      {expandedAsset.description && (
+                        <>
+                          <h3 className="font-medium">Description</h3>
+                          <p className="whitespace-pre-wrap break-words">{expandedAsset.description}</p>
+                        </>
+                      )}
+                      {expandedAsset.category && (
+                        <div>
+                          <h3 className="font-medium">Category</h3>
+                          <p>{expandedAsset.category}</p>
+                        </div>
+                      )}
+                      {expandedAsset.tags && expandedAsset.tags.length > 0 && (
+                        <div>
+                          <h3 className="font-medium">Tags</h3>
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            {expandedAsset.tags.map((tag, i) => (
+                              <span key={i} className="bg-muted px-2 py-1 text-sm rounded">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <h3 className="font-medium">Type</h3>
+                          <p className="text-muted-foreground capitalize">{expandedAsset.type}</p>
+                        </div>
+                        <div>
+                          <h3 className="font-medium">Visibility</h3>
+                          <p className={expandedAsset.isPublic ? "text-green-600 dark:text-green-400" : "text-amber-600 dark:text-amber-400"}>
+                            {expandedAsset.isPublic ? "Public" : "Private"}
+                          </p>
                         </div>
                       </div>
-                    )}
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <h3 className="font-medium">Type</h3>
-                        <p className="text-muted-foreground capitalize">{expandedAsset.type}</p>
-                      </div>
-                      <div>
-                        <h3 className="font-medium">Visibility</h3>
-                        <p className={expandedAsset.isPublic ? "text-green-600 dark:text-green-400" : "text-amber-600 dark:text-amber-400"}>
-                          {expandedAsset.isPublic ? "Public" : "Private"}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    {/* Usage dates section */}
-                    {(expandedAsset.usageStartDate || expandedAsset.usageEndDate) && (
-                      <div className="grid grid-cols-2 gap-4">
-                        {expandedAsset.usageStartDate && (
-                          <div>
-                            <h3 className="font-medium">Usage Start Date</h3>
-                            <p className="text-muted-foreground">
-                              {new Date(expandedAsset.usageStartDate).toLocaleDateString()}
-                            </p>
-                          </div>
-                        )}
-                        {expandedAsset.usageEndDate && (
-                          <div>
-                            <h3 className="font-medium">Usage End Date</h3>
-                            <p className="text-muted-foreground">
-                              {new Date(expandedAsset.usageEndDate).toLocaleDateString()}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    
-                    {/* File attachments */}
-                    {(expandedAsset.fileUrl || (expandedAsset.files && expandedAsset.files.length > 0)) && (
-                      <div>
-                        <h3 className="font-medium">Files</h3>
-                        <div className="space-y-2 mt-2">
-                          {/* Legacy file URL */}
-                          {expandedAsset.fileUrl && (
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <FileText className="h-4 w-4" />
-                                <a 
-                                  href={expandedAsset.fileUrl} 
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-primary hover:underline"
-                                >
-                                  Attached file
-                                </a>
-                              </div>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handlePreviewFileFromExpanded({
-                                  url: expandedAsset.fileUrl!, 
-                                  name: "Attached file", 
-                                  type: "", 
-                                  size: 0
-                                })}
-                              >
-                                <Eye className="mr-2 h-4 w-4" />
-                                Preview
-                              </Button>
+                      
+                      {(expandedAsset.usageStartDate || expandedAsset.usageEndDate) && (
+                        <div className="grid grid-cols-2 gap-4">
+                          {expandedAsset.usageStartDate && (
+                            <div>
+                              <h3 className="font-medium">Usage Start Date</h3>
+                              <p className="text-muted-foreground">
+                                {new Date(expandedAsset.usageStartDate).toLocaleDateString()}
+                              </p>
                             </div>
                           )}
-
-                          {/* Multiple files */}
-                          {expandedAsset.files && expandedAsset.files.length > 0 ? (
-                            expandedAsset.files.map((file, index) => (
-                              <div key={index} className="flex items-center justify-between">
+                          {expandedAsset.usageEndDate && (
+                            <div>
+                              <h3 className="font-medium">Usage End Date</h3>
+                              <p className="text-muted-foreground">
+                                {new Date(expandedAsset.usageEndDate).toLocaleDateString()}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {(expandedAsset.fileUrl || (expandedAsset.files && expandedAsset.files.length > 0)) && (
+                        <div>
+                          <h3 className="font-medium">Files</h3>
+                          <div className="space-y-2 mt-2">
+                            {expandedAsset.fileUrl && (
+                              <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                   <FileText className="h-4 w-4" />
                                   <a 
-                                    href={file.url} 
+                                    href={expandedAsset.fileUrl} 
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-primary hover:underline"
                                   >
-                                    {file.name || `File ${index + 1}`}
+                                    Attached file
                                   </a>
                                 </div>
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => handlePreviewFileFromExpanded(file)}
+                                  onClick={() => handlePreviewFileFromExpanded({
+                                    url: expandedAsset.fileUrl!, 
+                                    name: "Attached file", 
+                                    type: "", 
+                                    size: 0
+                                  })}
                                 >
                                   <Eye className="mr-2 h-4 w-4" />
                                   Preview
                                 </Button>
                               </div>
-                            ))
-                          ) : !expandedAsset.fileUrl && (
-                            <p className="text-muted-foreground">No files attached</p>
-                          )}
+                            )}
+
+                            {expandedAsset.files && expandedAsset.files.length > 0 ? (
+                              expandedAsset.files.map((file, index) => (
+                                <div key={index} className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <FileText className="h-4 w-4" />
+                                    <a 
+                                      href={file.url} 
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-primary hover:underline"
+                                    >
+                                      {file.name || `File ${index + 1}`}
+                                    </a>
+                                  </div>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handlePreviewFileFromExpanded(file)}
+                                  >
+                                    <Eye className="mr-2 h-4 w-4" />
+                                    Preview
+                                  </Button>
+                                </div>
+                              ))
+                            ) : !expandedAsset.fileUrl && (
+                              <p className="text-muted-foreground">No files attached</p>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            </ScrollArea>
+                      )}
+                    </>
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
             <DialogFooter className="px-6 py-4 border-t">
               <Button onClick={() => {
                 setShowExpandDialog(false);
