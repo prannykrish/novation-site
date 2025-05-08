@@ -36,17 +36,23 @@ interface DragItem {
 const ItemTypes = { ASSET: "asset", FOLDER: "folder" } as const
 
 const DEFAULT_ASSET_TYPES = [
-  { id: "document", name: "Document" },
-  { id: "image", name: "Image" },
-  { id: "presentation", name: "Presentation" },
-  { id: "spreadsheet", name: "Spreadsheet" },
+  { id: "name", name: "Name" },
+  { id: "logo", name: "Logo" },
+  { id: "design", name: "Design" },
+  { id: "aesthetic", name: "Aesthetic" },
+  { id: "slogan", name: "Slogan" },
+  { id: "motto", name: "Motto" },
   { id: "other", name: "Other" },
 ]
 
 const DEFAULT_CATEGORIES = [
-  { id: "body-care", name: "Body Care" },
-  { id: "mens-grooming", name: "Men's Grooming" },
+  { id: "soaps", name: "Soaps" },
+  { id: "candles", name: "Candles" },
+  { id: "grooming", name: "Grooming" },
+  { id: "skin_care", name: "Skin Care" },
+  { id: "perfumes_colognes", name: "Perfumes & Colognes" },
 ]
+
 
 const getAssetIcon = (type?: string) => {
   switch (type?.toLowerCase()) {

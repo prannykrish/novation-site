@@ -18,6 +18,19 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
 import { assetService, categoryService, userService } from "@/lib/database"
 import { Asset, Category, SearchFilters, AssetFile } from "@/types/database"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -27,16 +40,21 @@ import { FilePreview } from "@/components/file-preview"
   Constants
 -----------------------------------------------------------------*/
 const DEFAULT_ASSET_TYPES = [
-  { id: "document", name: "Document" },
-  { id: "image", name: "Image" },
-  { id: "presentation", name: "Presentation" },
-  { id: "spreadsheet", name: "Spreadsheet" },
+  { id: "name", name: "Name" },
+  { id: "logo", name: "Logo" },
+  { id: "design", name: "Design" },
+  { id: "aesthetic", name: "Aesthetic" },
+  { id: "slogan", name: "Slogan" },
+  { id: "motto", name: "Motto" },
   { id: "other", name: "Other" },
 ]
 
 const DEFAULT_CATEGORIES = [
-  { id: "body-care", name: "Body Care" },
-  { id: "mens-grooming", name: "Men's Grooming" },
+  { id: "soaps", name: "Soaps" },
+  { id: "candles", name: "Candles" },
+  { id: "grooming", name: "Grooming" },
+  { id: "skin_care", name: "Skin Care" },
+  { id: "perfumes_colognes", name: "Perfumes & Colognes" },
 ]
 
 /* ----------------------------------------------------------------
@@ -117,16 +135,6 @@ export default function LookupPage() {
     }
   }, [searchFilters, isClient])
 
-  // fetch categories once
-  React.useEffect(() => {
-    ;(async () => {
-      try {
-        const list = await categoryService.getCategories()
-        if (list.length) setCategories(list)
-      } catch (_) {}
-    })()
-  }, [])
-
   // fetch assets whenever filters change after initial mount
   React.useEffect(() => {
     if (!initialLoadComplete) return
@@ -149,9 +157,9 @@ export default function LookupPage() {
     try {
       const srvFilters: any = {}
       if (searchFilters.keyword) srvFilters.keyword = searchFilters.keyword
-      if ((searchFilters.categories || []).length) srvFilters.category = (searchFilters.categories || [])[0]
+      if ((searchFilters.categories || []).length > 0) srvFilters.category = searchFilters.categories
       if ((searchFilters.tags || []).length) srvFilters.tags = (searchFilters.tags || [])
-      if ((searchFilters.types || []).length) srvFilters.type = (searchFilters.types || [])[0]
+      if ((searchFilters.types || []).length > 0) srvFilters.type = searchFilters.types
       if (searchFilters.startDate) srvFilters.startDate = searchFilters.startDate
       if (searchFilters.endDate) srvFilters.endDate = searchFilters.endDate
       if (searchFilters.isPublicOnly) srvFilters.isPublicOnly = true
@@ -572,29 +580,63 @@ export default function LookupPage() {
               </div>
             </div>
             
-            {/* Category filter */}
+            {/* Category filter - Updated to Multi-Select Dropdown */}
             <div className="grid gap-2">
               <Label>Categories</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {categories.map((category) => (
-                  <div key={category.id} className="flex items-center gap-2">
-                    <Checkbox 
-                      id={`category-${category.id}`}
-                      checked={searchFilters.categories?.includes(category.id)}
-                      onCheckedChange={(checked) => {
-                        setSearchFilters(prev => ({
-                          ...prev,
-                          categories: checked 
-                            ? [...(prev.categories || []), category.id]
-                            : (prev.categories || []).filter(id => id !== category.id),
-                          page: 1
-                        }))
-                      }}
-                    />
-                    <Label htmlFor={`category-${category.id}`}>{category.name}</Label>
-                  </div>
-                ))}
-              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start font-normal">
+                    {searchFilters.categories && searchFilters.categories.length > 0
+                      ? categories
+                          .filter(cat => searchFilters.categories?.includes(cat.id))
+                          .map(cat => cat.name)
+                          .join(", ")
+                      : "Select categories"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search categories..." />
+                    <CommandList>
+                      <CommandEmpty>No categories found.</CommandEmpty>
+                      <CommandGroup>
+                        {categories.map((category) => (
+                          <CommandItem
+                            key={category.id}
+                            value={category.id}
+                            onSelect={() => {
+                              const isSelected = searchFilters.categories?.includes(category.id);
+                              setSearchFilters(prev => ({
+                                ...prev,
+                                categories: isSelected
+                                  ? (prev.categories || []).filter(id => id !== category.id)
+                                  : [...(prev.categories || []), category.id],
+                                page: 1
+                              }));
+                            }}
+                          >
+                            <Checkbox
+                              className="mr-2"
+                              checked={searchFilters.categories?.includes(category.id)}
+                              onCheckedChange={(checked) => {
+                                setSearchFilters(prev => ({
+                                  ...prev,
+                                  categories: checked
+                                    ? [...(prev.categories || []), category.id]
+                                    : (prev.categories || []).filter(id => id !== category.id),
+                                  page: 1
+                                }));
+                              }}
+                              onClick={(e) => e.stopPropagation()} // Prevent CommandItem onSelect from firing twice
+                            />
+                            {category.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
             
             {/* Tags filter */}
