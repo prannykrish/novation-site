@@ -2,7 +2,7 @@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { ChartBarIncreasingIcon,Bot, Users, SquareActivity, Database, Fingerprint, IdCard } from 'lucide-react'
 import Image from 'next/image'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { BorderBeam } from '@/components/magicui/border-beam'
 
@@ -10,24 +10,20 @@ export default function Features() {
     type ImageKey = 'item-1' | 'item-2' | 'item-3' | 'item-4'
     const [activeItem, setActiveItem] = useState<ImageKey>('item-1')
 
-    const images = {
-        'item-1': {
-            image: '/charts.png',
-            alt: 'Database visualization',
-        },
-        'item-2': {
-            image: '/music.png',
-            alt: 'Security authentication',
-        },
-        'item-3': {
-            image: '/mail2.png',
-            alt: 'Identity management',
-        },
-        'item-4': {
-            image: '/payments.png',
-            alt: 'Analytics dashboard',
-        },
+    const images: Record<ImageKey, string> = {
+        'item-1': '/images/features/database-visualization.png',
+        'item-2': '/images/features/ai-trademark-analyst.png',
+        'item-3': '/images/features/trademark-monitoring.png',
+        'item-4': '/images/features/community-guidance.png',
     }
+
+    // Preload images
+    useEffect(() => {
+        Object.values(images).forEach((src) => {
+            const img = new window.Image()
+            img.src = src
+        })
+    }, [images])
 
     return (
         <>
@@ -36,7 +32,7 @@ export default function Features() {
             <div className="mx-auto max-w-5xl space-y-8 px-6 md:space-y-16 lg:space-y-20 dark:[--color-border:color-mix(in_oklab,var(--color-white)_10%,transparent)]">
                 <div className="relative z-10 mx-auto max-w-2xl space-y-6 text-center">
                     <h2 className="text-balance text-4xl font-semibold lg:text-6xl">What Can Novation Do?</h2>
-                    <p>Novation is evolving to be more than just a database. It provides clear and instant trademark insight on every single idea you’re considering - fast, simple, and built for creators.</p>
+                    <p>Novation is evolving to be more than just a database. It provides clear and instant trademark insight on every single idea you're considering - fast, simple, and built for creators.</p>
                 </div>
 
                 <div className="grid gap-12 sm:px-12 md:grid-cols-2 lg:gap-20 lg:px-0">
@@ -44,7 +40,7 @@ export default function Features() {
                         type="single"
                         value={activeItem}
                         onValueChange={(value) => setActiveItem(value as ImageKey)}
-                        className="w-full">
+                        className="w-full md:col-span-2 md:mx-auto md:max-w-2xl lg:max-w-3xl">
                         <AccordionItem value="item-1">
                             <AccordionTrigger>
                                 <div className="flex items-center gap-2 text-base">
@@ -52,7 +48,7 @@ export default function Features() {
                                     Database Visualization
                                 </div>
                             </AccordionTrigger>
-                            <AccordionContent>Upload and track current brand assets you’re using and see what others in similar niches are using. Get inspired by their ideas, and message them through Novation to work together or ask to use variations of their brand assets. Maintain that professional courtesy you’ve been waiting for. </AccordionContent>
+                            <AccordionContent>Upload and track current brand assets you're using and see what others in similar niches are using. Get inspired by their ideas, and message them through Novation to work together or ask to use variations of their brand assets. Maintain that professional courtesy you've been waiting for. </AccordionContent>
                         </AccordionItem>
                         <AccordionItem value="item-2">
                             <AccordionTrigger>
@@ -85,7 +81,7 @@ export default function Features() {
                     {/* Add the asterisk note here */}
 
 
-                    <div className="bg-card relative flex overflow-hidden rounded-3xl border p-2">
+                    {/* <div className="bg-card relative flex overflow-hidden rounded-3xl border p-2">
 
                         <div className="bg-background relative w-full rounded-2xl">
                             <AnimatePresence mode="wait">
@@ -111,7 +107,7 @@ export default function Features() {
                             size={200}
                             className="from-transparent via-yellow-700 to-transparent dark:via-white/50"
                         />
-                    </div>
+                    </div> */}
                 </div>
             </div>
             <p className="text-muted-foreground text-xs italic text-center mt-4">

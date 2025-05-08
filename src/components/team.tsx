@@ -5,13 +5,13 @@ const members = [
         name: 'Pranav Krishnan',
         role: 'Co-Founder, CEO',
         avatar: '/images/Pranav2.jpeg',
-        link: '#',
+        link: 'https://www.linkedin.com/in/pranavgkrishnan/',
     },
     {
         name: 'Aditya Gollamudi',
         role: 'Co-Founder, CTO',
         avatar: '/images/Aditya.jpeg',
-        link: '#',
+        link: 'https://www.linkedin.com/in/adityago/',
     },
 ]
 
