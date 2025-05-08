@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef, useMemo } from "react"
 import { Folder as FolderIcon, Plus, Edit, Trash2, Maximize2, FileImage, FileText, PresentationIcon, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -422,6 +422,66 @@ function RootDropArea({ onDrop, isActive }: { onDrop: (id: string, tp: string) =
 }
 
 /* ----------------------------------------------------------------
+  Parent Drop Area
+-----------------------------------------------------------------*/
+function ParentDropArea({ 
+  onDrop, 
+  isActive, 
+  parentFolderName 
+}: { 
+  onDrop: (id: string, tp: string) => void; 
+  isActive: boolean;
+  parentFolderName?: string;
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [{ isOver, canDrop }, drop] = useDrop(() => ({
+    accept: [ItemTypes.ASSET, ItemTypes.FOLDER],
+    drop: (item: DragItem, monitor) => {
+      console.log('[ParentDropArea] Item dropped:', item);
+      if (monitor.didDrop()) {
+        console.log('[ParentDropArea] Item was already handled by another drop target');
+        return;
+      }
+      onDrop(item.id, item.kind);
+      return { droppedInParent: true }; // Return a value to stop propagation
+    },
+    collect: (m) => ({ 
+      isOver: m.isOver({ shallow: true }), // Only check if directly over this target
+      canDrop: m.canDrop() 
+    }),
+    hover: (item, monitor) => {
+      if (monitor.isOver({ shallow: true })) {
+        console.log('[ParentDropArea] Item hovering:', item);
+      }
+    }
+  }), [onDrop])
+  
+  if (!isActive || !parentFolderName) {
+    console.log('[ParentDropArea] Not active or no parent name');
+    return null;
+  }
+  
+  drop(ref)
+  
+  return (
+    <div
+      ref={ref}
+      className={`mb-4 p-6 border-2 border-dashed rounded-lg flex items-center justify-center transition-all
+        ${isOver && canDrop 
+          ? "border-primary bg-primary/10 shadow-lg"
+          : "border-muted-foreground/20 hover:border-primary/40 hover:bg-muted/10"}`}
+      style={{ touchAction: "none" }}
+    >
+      <p className="text-muted-foreground text-sm flex items-center">
+        {isOver && canDrop 
+          ? <><FolderIcon className="mr-2 h-4 w-4 text-primary" /> Drop here to move to '{parentFolderName}'</>
+          : <><FolderIcon className="mr-2 h-4 w-4" /> Drag items here to move to parent folder '{parentFolderName}'</>}
+      </p>
+    </div>
+  )
+}
+
+/* ----------------------------------------------------------------
   Main Component
 -----------------------------------------------------------------*/
 export default function AssetsPage() {
@@ -499,30 +559,25 @@ export default function AssetsPage() {
   };
 
   const navigateToFolder = (folderId: string) => {
-    // Get the folder object from our state
-    const folder = folders.find(f => f.id === folderId);
-    if (!folder) return;
-    
-    // Set as current folder and load its contents
-    setCurrentFolder(folder);
+    // loadItems will fetch assets and folders for folderId.
+    // If folderId is valid, loadItems will also call loadFolderPath(folderId),
+    // which will correctly set the folderPath and currentFolder based on fresh DB data.
     loadItems(folderId);
-    
-    // If it's already in our path, we're navigating backwards
-    const existingIndex = folderPath.findIndex(f => f.id === folderId);
-    if (existingIndex >= 0) {
-      setFolderPath(folderPath.slice(0, existingIndex + 1));
-    } else {
-      // Otherwise add it to our path
-      setFolderPath([...folderPath, folder]);
-    }
   };
 
   const navigateUp = () => {
-    if (folderPath.length <= 1) {
+    if (folderPath.length <= 1) { // Current is root or a top-level folder
       navigateToRoot();
     } else {
+      // Parent is the second to last in folderPath
       const parentFolder = folderPath[folderPath.length - 2];
-      navigateToFolder(parentFolder.id);
+      if (parentFolder && parentFolder.id) {
+        navigateToFolder(parentFolder.id);
+      } else {
+        // Fallback to root if something is unexpected with folderPath
+        console.warn("NavigateUp: Could not determine parent folder, navigating to root.");
+        navigateToRoot();
+      }
     }
   };
 
@@ -599,32 +654,43 @@ export default function AssetsPage() {
 
   // Load items function
   const loadItems = async (folderId: string | null) => {
+    console.log('[loadItems] Called with folderId:', folderId);
     setLoading(true);
     try {
-      // Load assets for the current folder - only show the current user's assets
+      console.log('[loadItems] Fetching assets for folderId:', folderId);
       const assetsData = await assetService.getAssets({ 
         folderId: folderId ?? undefined,
-        currentUserOnly: true // Only show assets owned by the current user
+        currentUserOnly: true
       });
+      console.log('[loadItems] Fetched assetsData count:', assetsData?.length);
       setAssets(assetsData || []);
       
-      // Load folders for the current folder
+      console.log('[loadItems] Fetching folders for folderId (as parentId):', folderId);
       const foldersData = await folderService.getFolders(folderId);
+      console.log('[loadItems] Fetched foldersData count:', foldersData?.length);
       setFolders(foldersData || []);
       
-      // If we're in a subfolder, load the folder path
       if (folderId) {
+        console.log('[loadItems] Calling loadFolderPath for folderId:', folderId);
         await loadFolderPath(folderId);
+      } else {
+        console.log('[loadItems] Setting context to root because folderId is null/undefined.');
+        setCurrentFolder(null);
+        setFolderPath([]);
       }
+      console.log('[loadItems] currentFolder after processing:', JSON.stringify(currentFolder));
+      console.log('[loadItems] folderPath after processing:', JSON.stringify(folderPath));
     } catch (error) {
-      console.error('Error loading items:', error);
+      console.error('[loadItems] Error loading items:', error);
     } finally {
+      console.log('[loadItems] Finished. Setting loading to false.');
       setLoading(false);
     }
   };
   
   // Load folder path (breadcrumb navigation)
   const loadFolderPath = async (folderId: string) => {
+    console.log('[loadFolderPath] Called with folderId:', folderId);
     try {
       const path: Folder[] = [];
       let currentId = folderId;
@@ -865,27 +931,46 @@ export default function AssetsPage() {
   };
   
   const handleDrop = async (itemId: string, itemType: string, targetId?: string) => {
-    setLoading(true);
+    const sourceFolderId = currentFolder?.id || null;
+    console.log('[handleDrop] Initiated. sourceFolderId:', sourceFolderId, 'itemId:', itemId, 'itemType:', itemType, 'targetId:', targetId);
+    console.log('[handleDrop] currentFolder at start:', JSON.stringify(currentFolder));
+    console.log('[handleDrop] folderPath at start:', JSON.stringify(folderPath));
+
+    // Optimistically update UI
+    if (itemType === ItemTypes.ASSET) {
+      setAssets(prevAssets => prevAssets.filter(asset => asset.id !== itemId));
+    } else if (itemType === ItemTypes.FOLDER) {
+      setFolders(prevFolders => prevFolders.filter(folder => folder.id !== itemId));
+    }
     
+    // No longer set loading here, as loadItems will handle it, 
+    // and we want the optimistic update to be visible immediately.
+
     try {
-      // First perform the backend operation
+      // Perform the backend operation
       if (itemType === ItemTypes.ASSET) {
         await assetService.moveAssetToFolder(itemId, targetId || null);
       } else if (itemType === ItemTypes.FOLDER) {
-        await folderService.updateFolder(itemId, { parentId: targetId || undefined });
+        await folderService.updateFolder(itemId, { parentId: targetId || null });
       }
       
-      // After successful backend operation, reload the current folder contents
-      // This ensures UI is in sync with the database
-      await loadItems(currentFolder?.id || null);
+      // After successful backend operation, reload the contents of the folder we were originally in.
+      console.log('[handleDrop] Backend operation successful. Calling loadItems with sourceFolderId:', sourceFolderId);
+      await loadItems(sourceFolderId); 
+      console.log('[handleDrop] loadItems finished.');
+      console.log('[handleDrop] currentFolder after loadItems:', JSON.stringify(currentFolder));
+      console.log('[handleDrop] folderPath after loadItems:', JSON.stringify(folderPath));
       
     } catch (error) {
-      console.error(`Error moving ${itemType}:`, error);
-      // Show an error message to the user
+      console.error(`[handleDrop] Error moving ${itemType}:`, error);
       alert(`Failed to move ${itemType}. Please try again.`);
-    } finally {
-      setLoading(false);
+      console.log('[handleDrop] Error occurred. Calling loadItems to rollback/refresh with sourceFolderId:', sourceFolderId);
+      await loadItems(sourceFolderId);
+      console.log('[handleDrop] loadItems after error finished.');
+      console.log('[handleDrop] currentFolder after error loadItems:', JSON.stringify(currentFolder));
+      console.log('[handleDrop] folderPath after error loadItems:', JSON.stringify(folderPath));
     }
+    // setLoading(false) is handled by loadItems
   };
 
   // Add dedicated function for expanding assets
@@ -944,6 +1029,18 @@ export default function AssetsPage() {
   useEffect(() => {
     loadItems(null);
   }, []);
+
+  // Determine parent folder for the "Move Up" drop area
+  const parentFolderForDrop = useMemo(() => {
+    console.log('[AssetsPage] Calculating parentFolderForDrop. folderPath:', folderPath);
+    if (folderPath.length > 1) {
+      const parent = folderPath[folderPath.length - 2];
+      console.log('[AssetsPage] Found parent folder:', parent);
+      return parent;
+    }
+    console.log('[AssetsPage] No parent folder found');
+    return null;
+  }, [folderPath]);
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -1004,6 +1101,20 @@ export default function AssetsPage() {
         
         {/* Scrollable content section */}
         <div className="flex-grow overflow-y-auto p-6 pt-0">
+          {/* Parent drop area (only show when in a subfolder with a parent) */}
+          <ParentDropArea
+            onDrop={(itemId, itemType) => {
+              console.log('[AssetsPage] ParentDropArea onDrop called:', { itemId, itemType, parentFolder: parentFolderForDrop });
+              if (parentFolderForDrop) {
+                handleDrop(itemId, itemType, parentFolderForDrop.id);
+              } else {
+                console.warn('[AssetsPage] Cannot move to parent: parent folder not found');
+              }
+            }}
+            isActive={!!parentFolderForDrop}
+            parentFolderName={parentFolderForDrop?.name}
+          />
+
           {/* Root drop area (only show when in a subfolder) */}
           <RootDropArea 
             onDrop={(itemId, itemType) => handleDrop(itemId, itemType)}

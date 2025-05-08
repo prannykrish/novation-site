@@ -435,8 +435,13 @@ export const assetService = {
         query = query.eq('is_public', true);
       }
       
-      if (filters.folderId) {
-        query = query.eq('folder_id', filters.folderId);
+      // Correctly filter by folderId, including root (folder_id IS NULL)
+      if (filters.hasOwnProperty('folderId')) {
+        if (filters.folderId === null || filters.folderId === undefined) {
+          query = query.is('folder_id', null);
+        } else {
+          query = query.eq('folder_id', filters.folderId);
+        }
       }
       
       // Apply pagination
