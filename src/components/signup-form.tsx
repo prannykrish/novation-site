@@ -48,7 +48,7 @@ export function SignUpForm({
           data: {
             full_name: name,
           },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `https://www.novationapp.com/auth/callback`,
         },
       });
       

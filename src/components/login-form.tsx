@@ -60,7 +60,7 @@ export function LoginForm({
     
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
+        redirectTo: `https://www.novationapp.com/auth/callback?type=recovery`,
       });
       
       if (error) throw error;
