@@ -59,7 +59,7 @@ export function SignUpForm({
       router.refresh();
       
       // Always redirect to dashboard - remove email verification check
-      router.push('/dashboard');
+      router.push('/auth/verify?type=signup');
     } catch (err: any) {
       console.error('Signup error:', err);
       setError(err.message);
