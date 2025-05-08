@@ -27,16 +27,32 @@ export function MessageNotificationListener() {
   const router = useRouter()
   const pathname = usePathname()
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0)
   
   // Track if we're currently on the messages page
   const isOnMessagesPage = pathname?.startsWith('/dashboard/messages')
   
   useEffect(() => {
-    // Reset document title when not viewing messages
-    if (!isOnMessagesPage) {
+    // If on messages page, title might be handled by the page itself or default
+    // If not on messages page, show count if > 0
+    if (unreadMessagesCount > 0) {
+      document.title = `(${unreadMessagesCount}) Messages | Shadcnmaxxing`
+    } else {
       document.title = 'Shadcnmaxxing'
     }
-  }, [isOnMessagesPage])
+  }, [unreadMessagesCount, isOnMessagesPage, pathname])
+  
+  // Function to fetch and update unread messages count state
+  const fetchAndUpdateUnreadCount = async () => {
+    if (!currentUserId) return; // Ensure userId is available
+    try {
+      const count = await messageService.getUnreadMessagesCount()
+      setUnreadMessagesCount(count)
+    } catch (error) {
+      console.error('Error fetching unread messages count:', error)
+      setUnreadMessagesCount(0); // Fallback to 0 on error
+    }
+  }
   
   useEffect(() => {
     // Get current user ID and set up notification listeners
@@ -53,6 +69,13 @@ export function MessageNotificationListener() {
         
         const userId = session.user.id
         setCurrentUserId(userId)
+        
+        // Fetch initial unread count
+        if (userId) { // Check if userId is truthy before fetching
+            // Call the new function to fetch and update state
+            const initialCount = await messageService.getUnreadMessagesCount();
+            setUnreadMessagesCount(initialCount);
+        }
         
         // Create channel for real-time message notifications
         const channel: RealtimeChannel = supabase
@@ -88,13 +111,8 @@ export function MessageNotificationListener() {
                   console.log('Audio play prevented by browser policy', e)
                 })
                 
-                // Get unread count
-                const unreadCount = await messageService.getUnreadMessagesCount()
-                
-                // Update the document title to show unread count
-                if (unreadCount > 0) {
-                  document.title = `(${unreadCount}) Messages | Shadcnmaxxing`
-                }
+                // Get unread count - NOW UPDATES STATE, not just title
+                await fetchAndUpdateUnreadCount(); // Update state, which triggers title update effect
                 
                 // Get sender information for a better notification
                 let senderName = 'Someone'
@@ -165,14 +183,9 @@ export function MessageNotificationListener() {
               filter: `recipient_id=eq.${userId} AND is_read=eq.true`
             },
             async () => {
-              // Update the unread count in the document title
+              // Update the unread count in the document title - NOW UPDATES STATE
               try {
-                const unreadCount = await messageService.getUnreadMessagesCount()
-                if (unreadCount > 0) {
-                  document.title = `(${unreadCount}) Messages | Shadcnmaxxing`
-                } else {
-                  document.title = 'Shadcnmaxxing'
-                }
+                await fetchAndUpdateUnreadCount(); // Update state, which triggers title update effect
               } catch (error) {
                 console.error('Error updating unread count:', error)
               }
@@ -198,25 +211,7 @@ export function MessageNotificationListener() {
     }
     
     setupListener()
-  }, [router, isOnMessagesPage])
-  
-  // Check for unread messages on initial load
-  useEffect(() => {
-    if (!currentUserId) return
-    
-    const checkUnreadMessages = async () => {
-      try {
-        const unreadCount = await messageService.getUnreadMessagesCount()
-        if (unreadCount > 0 && !isOnMessagesPage) {
-          document.title = `(${unreadCount}) Messages | Shadcnmaxxing`
-        }
-      } catch (error) {
-        console.error('Error checking unread messages:', error)
-      }
-    }
-    
-    checkUnreadMessages()
-  }, [currentUserId, isOnMessagesPage])
+  }, [router])
   
   // This is a headless component that doesn't render anything
   return null

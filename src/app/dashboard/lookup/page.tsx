@@ -18,7 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { assetService, categoryService } from "@/lib/database"
+import { assetService, categoryService, userService } from "@/lib/database"
 import { Asset, Category, SearchFilters, AssetFile } from "@/types/database"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { FilePreview } from "@/components/file-preview"
@@ -89,6 +89,8 @@ export default function LookupPage() {
     pageSize: 12,
   })
 
+  const [currentUserId, setCurrentUserId] = React.useState<string | null>(null);
+
   // Import useRouter hook
   const router = useRouter()
 
@@ -133,6 +135,13 @@ export default function LookupPage() {
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchFilters, initialLoadComplete])
+
+  React.useEffect(() => {
+    (async () => {
+      const user = await userService.getCurrentUser();
+      setCurrentUserId(user?.id ?? null);
+    })();
+  }, []);
 
   /* ------------------------ Data fetching ----------------------*/
   const loadAssets = async () => {
@@ -226,7 +235,7 @@ export default function LookupPage() {
 
   /* --------------------------- UI ------------------------------*/
   return (
-    <div className="w-full h-full p-6 bg-background">
+    <div className="w-full p-6 bg-background">
       {/* ------------------- Header --------------------*/}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-center mb-6">Asset Lookup</h1>
@@ -426,8 +435,11 @@ export default function LookupPage() {
               <CardFooter className="flex justify-between items-center py-3 px-4 border-t">
                 <span className="text-xs text-muted-foreground">
                   By {asset.userName || asset.userEmail || "Unknown"}
+                  {asset.userId === currentUserId && (
+                    <Badge className="ml-2" variant="default">Owned by me</Badge>
+                  )}
                 </span>
-                {asset.userId && (
+                {asset.userId && asset.userId !== currentUserId && (
                   <Button 
                     size="sm" 
                     variant="outline"
