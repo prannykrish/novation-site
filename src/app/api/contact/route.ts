@@ -1,11 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as Brevo from '@getbrevo/brevo';
 
+const brevoApiKey = process.env.BREVO_API_KEY;
+const senderEmail = process.env.SENDER_EMAIL;
+const recipientEmail = process.env.RECIPIENT_EMAIL;
+
 // Initialize Brevo API
 const apiInstance = new Brevo.TransactionalEmailsApi();
-apiInstance.setApiKey(Brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY || '');
+if (brevoApiKey) {
+  apiInstance.setApiKey(Brevo.TransactionalEmailsApiApiKeys.apiKey, brevoApiKey);
+} else {
+  console.error('BREVO_API_KEY is not set. Email functionality will be disabled.');
+}
 
 export async function POST(req: NextRequest) {
+  if (!brevoApiKey) {
+    console.error('Attempted to send email but BREVO_API_KEY is not configured.');
+    return NextResponse.json(
+      { error: 'Email service is not configured due to missing API key.' },
+      { status: 500 }
+    );
+  }
+  if (!senderEmail) {
+    console.error('Attempted to send email but SENDER_EMAIL is not configured.');
+    return NextResponse.json(
+      { error: 'Email service is not configured due to missing sender email.' },
+      { status: 500 }
+    );
+  }
+  if (!recipientEmail) {
+    console.error('Attempted to send email but RECIPIENT_EMAIL is not configured.');
+    return NextResponse.json(
+      { error: 'Email service is not configured due to missing recipient email.' },
+      { status: 500 }
+    );
+  }
+
   try {
     const body = await req.json();
     const { reason, preferredContact, contactInfo, subject, message } = body;
@@ -33,8 +63,8 @@ export async function POST(req: NextRequest) {
     const sendSmtpEmailInternal = new Brevo.SendSmtpEmail();
     sendSmtpEmailInternal.subject = `Support Request: ${subject}`;
     sendSmtpEmailInternal.htmlContent = internalEmailContent;
-    sendSmtpEmailInternal.sender = { name: 'Novation Contact Form', email: process.env.SENDER_EMAIL || '' }; // Replace with your "sender" email configured in Brevo
-    sendSmtpEmailInternal.to = [{ email: process.env.RECIPIENT_EMAIL || '' }]; // Replace with your actual recipient email or use env variable
+    sendSmtpEmailInternal.sender = { name: 'Novation Contact Form', email: senderEmail };
+    sendSmtpEmailInternal.to = [{ email: recipientEmail }];
 
     // Send email to yourself
     await apiInstance.sendTransacEmail(sendSmtpEmailInternal);
