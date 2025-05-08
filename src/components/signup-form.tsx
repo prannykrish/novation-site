@@ -71,7 +71,7 @@ export function SignUpForm({
   const handleGoogleSignUp = async () => {
     try {
       // Log the redirect URL for debugging
-      const redirectUrl = `${window.location.origin}/auth/callback`;
+      const redirectUrl = `https://www.novationapp.com/auth/callback`;
       console.log(`Google Sign-up - Redirect URL: ${redirectUrl}, Origin: ${window.location.origin}`);
       
       const { error } = await supabase.auth.signInWithOAuth({
