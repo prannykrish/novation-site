@@ -13,7 +13,7 @@ answer: 'Novation is a risk analysis tool that predicts the likelihood of confus
         {
             id: 'item-2',
             question: 'How does Novation work?',
-            answer: 'Through a comprehensive analysis, Novation predicts likelihood of confusion and provide its reasoning, statistics & analysis, and an audit trail. It lets users conduct a quick clearance search and see a comprehensive analysis in an easy-to-read format.',
+            answer: 'Through a comprehensive analysis, Novation predicts likelihood of confusion and provide its reasoning, statistics & analysis, and an audit trail. It lets users conduct a quick clearance search and see a comprehensive analysis in an easy-to-read format. The analysis that Novation provides is informational only and is not a substitute for legal advice.',
         },
         {
             id: 'item-3',
