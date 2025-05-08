@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import sgMail from '@sendgrid/mail';
+import * as Brevo from '@getbrevo/brevo';
 
-// Set your SendGrid API key
-sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
+// Initialize Brevo API
+const apiInstance = new Brevo.TransactionalEmailsApi();
+apiInstance.setApiKey(Brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY || '');
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,8 +18,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Compose email content
-    const emailContent = `
+    // Compose email content for sending to yourself
+    const internalEmailContent = `
       <h3>New Support Message</h3>
       <p><strong>Reason:</strong> ${reason}</p>
       <p><strong>Preferred Contact Method:</strong> ${preferredContact}</p>
@@ -28,23 +29,32 @@ export async function POST(req: NextRequest) {
       <p>${message.replace(/\n/g, '<br>')}</p>
     `;
 
-    // Configure email message
-    const msg = {
-      to: 'info@novationapp.com', // Replace with your email
-      from: 'noreply@novationapp.com', // Must be verified in SendGrid
-      subject: `Support Request: ${subject}`,
-      text: `New support message from ${contactInfo}`,
-      html: emailContent,
-    };
+    // Configure email for sending to yourself
+    const sendSmtpEmailInternal = new Brevo.SendSmtpEmail();
+    sendSmtpEmailInternal.subject = `Support Request: ${subject}`;
+    sendSmtpEmailInternal.htmlContent = internalEmailContent;
+    sendSmtpEmailInternal.sender = { name: 'Novation Contact Form', email: process.env.SENDER_EMAIL || '' }; // Replace with your "sender" email configured in Brevo
+    sendSmtpEmailInternal.to = [{ email: process.env.RECIPIENT_EMAIL || '' }]; // Replace with your actual recipient email or use env variable
 
-    // Send email
-    await sgMail.send(msg);
+    // Send email to yourself
+    await apiInstance.sendTransacEmail(sendSmtpEmailInternal);
+    // Optionally, send a confirmation email to the user
+    // const sendSmtpEmailUser = new Brevo.SendSmtpEmail();
+    // sendSmtpEmailUser.subject = "We've received your message";
+    // sendSmtpEmailUser.htmlContent = "<h1>Thank You!</h1><p>We have received your message and will get back to you shortly.</p>";
+    // sendSmtpEmailUser.sender = { name: "Novation App", email: "noreply@yourdomain.com" };
+    // if (preferredContact === 'email' && contactInfo) { // Only send if they prefer email and provided an email
+    //   sendSmtpEmailUser.to = [{ email: contactInfo }];
+    //   await apiInstance.sendTransacEmail(sendSmtpEmailUser);
+    // }
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error sending email:', error);
+    // Brevo errors might have more details in error.response.body
+    const errorMessage = (error as any).response?.body?.message || 'Failed to send email';
     return NextResponse.json(
-      { error: 'Failed to send email' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

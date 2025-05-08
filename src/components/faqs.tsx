@@ -88,7 +88,7 @@ export default function FAQs() {
                             <h3 className="font-medium">LinkedIn</h3>
                             <p className="text-muted-foreground mt-4">
                                 <a
-                                    href="https://linkedin.com/company/novation"
+                                    href="https://www.linkedin.com/company/novationai"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="underline underline-offset-4 hover:text-primary"
@@ -175,7 +175,7 @@ export default function FAQs() {
                             <div>
                                 <label htmlFor="body" className="block text-sm font-medium mb-1">Message</label>
                                 <textarea
-                                    id="body"
+                                    id="message"
                                     value={formData.message}
                                     onChange={handleChange}
                                     rows={5}
