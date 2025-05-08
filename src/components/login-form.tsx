@@ -260,15 +260,10 @@ export function LoginForm({
           )}
           
           <div className="bg-muted relative hidden md:block">
-            {/* <img
-              src="/images/plantred.jpg"
-              alt="Decorative plant image"
-              className="absolute inset-0 h-full w-full object-cover object-center block dark:hidden"
-            /> */}
             <img
               src="/images/plantred.jpg"
               alt="Decorative plant image"
-              className="absolute inset-0 h-full w-full object-cover object-center hidden dark:block"
+              className="absolute inset-0 h-full w-full object-cover object-center"
             />
           </div>
         </CardContent>

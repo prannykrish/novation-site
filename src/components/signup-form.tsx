@@ -216,15 +216,10 @@ export function SignUpForm({
             )}
           </form>
           <div className="bg-muted relative hidden md:block">
-            {/* <img
-              src="/images/plant.jpg"
-              alt="Decorative plant image"
-              className="absolute inset-0 h-full w-full object-cover object-center block dark:hidden"
-            /> */}
             <img
               src="/images/redsignup.jpg"
               alt="Decorative plant image"
-              className="absolute inset-0 h-full w-full object-cover object-center hidden dark:block brightness-80"
+              className="absolute inset-0 h-full w-full object-cover object-center brightness-80"
             />
           </div>
         </CardContent>
