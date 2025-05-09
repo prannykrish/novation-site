@@ -101,7 +101,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
 
   // Function to navigate to messages page
   const goToMessages = () => {
-    router.push('/dashboard/messages')
+    window.location.href = "https://www.novationapp.com/dashboard/messages"
   }
 
   // Get the current page title for the breadcrumb
