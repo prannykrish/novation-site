@@ -287,7 +287,7 @@ export default function HeroSection() {
                                 <div className="mx-auto max-w-full">
                                     <motion.div
                                         className="flex"
-                                        style={{ width: '330%' }}
+                                        style={{ width: '350%' }}
                                         animate={{
                                             x: ['0%', '-50%'],
                                         }}
