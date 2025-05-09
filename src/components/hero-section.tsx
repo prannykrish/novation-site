@@ -9,6 +9,7 @@ import { AnimatedGroup } from '@/components/ui/animated-group'
 import { HeroHeader } from '@/components/hero5-header'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useEffect } from 'react'
+import { ProductFrame } from '@/components/product-frame'
 
 interface RotatingWordsProps {
     words: string[]
@@ -98,6 +99,32 @@ const transitionVariants = {
 }
 
 export default function HeroSection() {
+    const productImagesData = [
+        {
+            id: 1,
+            lightSrc: "/images/lightproduct.png",
+            darkSrc: "/images/darkproduct.png",
+            alt: "App screen 1",
+        },
+        {
+            id: 2,
+            lightSrc: "/images/lightproduct.png",
+            darkSrc: "/images/darkproduct.png",
+            alt: "App screen 2",
+        },
+        {
+            id: 3,
+            lightSrc: "/images/lightproduct.png",
+            darkSrc: "/images/darkproduct.png",
+            alt: "App screen 3",
+        },
+    ];
+    // Create a key for each item that will be stable across re-renders for the duplicated list
+    const imagesToScroll = [
+        ...productImagesData.map(img => ({ ...img, uniqueKey: `frame-${img.id}-original` })),
+        ...productImagesData.map(img => ({ ...img, uniqueKey: `frame-${img.id}-duplicate` }))
+    ];
+
     return (
         <>
             <HeroHeader />
@@ -252,26 +279,35 @@ export default function HeroSection() {
                                 },
                                 ...transitionVariants,
                             }}>
-                            <div className="relative -mr-56 mt-8 overflow-hidden px-2 sm:mr-0 sm:mt-12 md:mt-20">
+                            <div className="relative mt-8 overflow-hidden sm:mt-12 md:mt-20">
                                 <div
                                     aria-hidden
                                     className="bg-linear-to-b to-background absolute inset-0 z-10 from-transparent from-35%"
                                 />
-                                <div className="inset-shadow-2xs ring-background dark:inset-shadow-white/20 bg-background relative mx-auto max-w-6xl overflow-hidden rounded-2xl border p-4 shadow-lg shadow-zinc-950/15 ring-1">
-                                    <Image
-                                        className="bg-background aspect-15/8 relative hidden rounded-2xl dark:block"
-                                        src="/images/darkproduct.png"
-                                        alt="app screen"
-                                        width="2700"
-                                        height="1440"
-                                    />
-                                    <Image
-                                        className="z-2 border-border/25 aspect-15/8 relative rounded-2xl border dark:hidden"
-                                        src="/images/lightproduct.png"
-                                        alt="app screen"
-                                        width="2700"
-                                        height="1440"
-                                    />
+                                <div className="mx-auto max-w-full">
+                                    <motion.div
+                                        className="flex"
+                                        style={{ width: '330%' }}
+                                        animate={{
+                                            x: ['0%', '-50%'],
+                                        }}
+                                        transition={{
+                                            ease: 'linear',
+                                            duration: 45,
+                                            repeat: Infinity,
+                                        }}
+                                    >
+                                        {imagesToScroll.map((imageData) => (
+                                            // Each child takes 1/6th of the motion.div's width, so each is 100% of the viewport width
+                                            <div key={imageData.uniqueKey} className="w-[calc(100%/6)] flex-shrink-0">
+                                                <ProductFrame
+                                                    lightSrc={imageData.lightSrc}
+                                                    darkSrc={imageData.darkSrc}
+                                                    alt={imageData.alt}
+                                                />
+                                            </div>
+                                        ))}
+                                    </motion.div>
                                 </div>
                             </div>
                         </AnimatedGroup>
