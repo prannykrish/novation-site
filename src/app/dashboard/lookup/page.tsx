@@ -252,7 +252,7 @@ export default function LookupPage() {
             <Search className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
             <Input
               placeholder="Search assets..."
-              className="pl-10 w-full h-12 text-base rounded-xl"
+              className="pl-10 w-full h-12 text-base rounded-xl bg-card"
               value={searchFilters.keyword}
               onChange={(e) => handleSearch(e.target.value)}
             />
