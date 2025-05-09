@@ -82,7 +82,7 @@ export default function FAQs() {
                         </div>
                         <div className="py-6">
                             <h3 className="font-medium">Phone</h3>
-                            <p className="text-muted-foreground mt-4">+1 (123) 456-7890</p>
+                            <p className="text-muted-foreground mt-4">+1 (469) 666-4789</p>
                         </div>
                         <div className="py-6">
                             <h3 className="font-medium">LinkedIn</h3>
