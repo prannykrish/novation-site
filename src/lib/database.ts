@@ -3,6 +3,7 @@ import { supabase } from './supabase';
 import { Product, Category, Message, DatabaseUser, Folder, Asset, MessageAttachment, BlockedUser } from '@/types/database';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '@/types/database';
+import { messageEvents, MESSAGE_EVENTS } from './events';
 
 // Initialize the Supabase client for client components
 const getSupabase = (): SupabaseClient<Database> => {
@@ -1079,7 +1080,13 @@ export const messageService = {
         throw error;
       }
       
-      return count || 0;
+      const finalCount = count || 0;
+      console.log(`[messageService.getUnreadMessagesCount] Current unread count: ${finalCount}`);
+      
+      // Broadcast the count - this is helpful when called directly
+      messageEvents.emit(MESSAGE_EVENTS.UNREAD_COUNT_CHANGED, finalCount);
+      
+      return finalCount;
     } catch (error) {
       console.error('Error in getUnreadMessagesCount:', error);
       return 0;
@@ -1093,30 +1100,64 @@ export const messageService = {
       
       // Handle both single message ID and arrays of message IDs
       if (Array.isArray(messageId)) {
+        console.log(`[messageService.markAsRead] Marking ${messageId.length} messages as read:`, messageId);
+        
         // If no message IDs, return early
         if (messageId.length === 0) return true;
         
         // Batch update for multiple messages
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('messages')
           .update({ is_read: true })
-          .in('id', messageId);
+          .in('id', messageId)
+          .select();
         
         if (error) {
           console.error('Error marking messages as read:', error);
           throw error;
         }
+        
+        console.log(`[messageService.markAsRead] Successfully marked ${data?.length || 0} messages as read with IDs:`, messageId);
+        
+        // Emit an event for each message marked as read
+        if (data && data.length > 0) {
+          data.forEach(message => {
+            messageEvents.emit(MESSAGE_EVENTS.MESSAGE_READ, message.id);
+          });
+        }
+
+        // Update the unread count and broadcast it
+        this.getUnreadMessagesCount().then(count => {
+          messageEvents.emit(MESSAGE_EVENTS.UNREAD_COUNT_CHANGED, count);
+        }).catch(error => {
+          console.error('Error getting unread count after mark as read:', error);
+        });
       } else {
         // Single message update
-        const { error } = await supabase
+        console.log(`[messageService.markAsRead] Marking single message as read:`, messageId);
+        
+        const { data, error } = await supabase
           .from('messages')
           .update({ is_read: true })
-          .eq('id', messageId);
+          .eq('id', messageId)
+          .select();
         
         if (error) {
           console.error('Error marking message as read:', error);
           throw error;
         }
+        
+        console.log(`[messageService.markAsRead] Successfully marked message as read with ID:`, messageId, data);
+        
+        // Emit the message read event
+        messageEvents.emit(MESSAGE_EVENTS.MESSAGE_READ, messageId);
+        
+        // Update the unread count and broadcast it
+        this.getUnreadMessagesCount().then(count => {
+          messageEvents.emit(MESSAGE_EVENTS.UNREAD_COUNT_CHANGED, count);
+        }).catch(error => {
+          console.error('Error getting unread count after mark as read:', error);
+        });
       }
       
       return true;
@@ -1208,7 +1249,16 @@ export const messageService = {
       }
       
       // Return the new message with proper format
-      return this.formatMessage(messageResult);
+      const formattedMessage = this.formatMessage(messageResult);
+      
+      // Emit event for new message
+      messageEvents.emit(MESSAGE_EVENTS.NEW_MESSAGE, formattedMessage);
+      
+      // Since this is a new unread message for the recipient,
+      // we should update the recipient's unread count,
+      // but that should happen through the Supabase real-time subscription
+      
+      return formattedMessage;
     } catch (error) {
       console.error('Error in sendMessage:', error);
       return null;

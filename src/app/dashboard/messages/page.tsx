@@ -19,6 +19,8 @@ import { Progress } from '@/components/ui/progress'
 import { FilePreview } from '@/components/file-preview'
 import { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from "@/lib/supabase"; // adjust as needed
+import { messageEvents, MESSAGE_EVENTS } from '@/lib/events'
+import { useNotifications } from '@/context/NotificationContext'
 
 // Import Combobox components
 import {
@@ -177,6 +179,9 @@ export default function MessagesPage() {
     console.log('[Ref Update Effect] selectedConversationUserRef updated to:', selectedConversationUser?.id);
   }, [selectedConversationUser]);
 
+  // Get markMessageAsRead from NotificationContext
+  const { markMessageAsRead } = useNotifications();
+
   // Setup realtime subscription (Modified callback)
   const setupRealtimeSubscription = (userId: string) => {
     if (!userId) return () => {}; 
@@ -230,7 +235,7 @@ export default function MessagesPage() {
                  // NEW: Mark as read if incoming from selected user and I am the recipient (userId is currentUser.id)
                  if (fullNewMessage.senderId === currentSelectedUser.id && fullNewMessage.recipientId === userId && !fullNewMessage.isRead) {
                     console.log('[Realtime INSERT] Active chat: Marking incoming message as read:', fullNewMessage.id);
-                    messageService.markAsRead([fullNewMessage.id]).then(success => {
+                    markMessageAsRead([fullNewMessage.id]).then(success => {
                         if (success) {
                             console.log('[Realtime INSERT] Active chat: Successfully marked as read on server. Updating local states.');
                             // Update messages in the main list
@@ -324,7 +329,7 @@ export default function MessagesPage() {
            return;
          }
          console.log('[Initialize] Fetching initial messages...');
-         await handleMessageUpdate(); // Fetches and sets `messages` state
+         const initialMessagesFromHandleUpdate = await handleMessageUpdate(); // Fetches and sets `messages` state, and returns them
          console.log('[Initialize] Fetching all users...');
          const allUsers = await userService.getAllUsers();
          setUsers(allUsers.filter(u => u.id !== user.id));
@@ -341,10 +346,8 @@ export default function MessagesPage() {
            if (conversationUser) {
              console.log('[Initialize] Setting selected conversation user:', conversationUser);
              setSelectedConversationUser(conversationUser);
-             // Need the latest messages here for loadConversation
-             const initialMessages = await messageService.getMessagesWithAttachments(); 
-             setMessages(initialMessages); // Ensure state is set before loadConversation uses it
-             await loadConversation(conversationUser, initialMessages);
+             // Use the messages returned by handleMessageUpdate instead of fetching again
+             await loadConversation(conversationUser, initialMessagesFromHandleUpdate);
            }
          }
          console.log('[Initialize] Setting up realtime subscription...');
@@ -364,7 +367,7 @@ export default function MessagesPage() {
    }, [searchParams]);
 
   // Centralized handler - NOW ONLY FOR INITIAL LOAD / MANUAL REFRESH
-  const handleMessageUpdate = async (sentMessageId?: string) => {
+  const handleMessageUpdate = async (sentMessageId?: string): Promise<Message[]> => {
      try {
        console.log('[handleMessageUpdate] Triggered');
        const updatedMessages = await messageService.getMessagesWithAttachments();
@@ -399,16 +402,16 @@ export default function MessagesPage() {
             setConversationMessages(sortedMessages); 
             console.log(`[handleMessageUpdate] Updated conversationMessages for user ${otherUser.id}. Count: ${sortedMessages.length}. First new: ${sortedMessages[sortedMessages.length -1]?.id}`);
        }
-
+       return updatedMessages;
      } catch (error) {
        console.error('Error in handleMessageUpdate:', error);
+       return []; // Return empty array on error
      }
      // Removed title update from here
   };
 
   // Mark conversation messages as read (ONLY called by loadConversation)
   const markConversationMessagesAsRead = async (conversationMsgs: Message[], otherUserId: string) => {
-    // ... (Keep the existing refined logic from previous step, including state updates)
     if (!currentUser || !otherUserId) return; 
     console.log('[markConversationMessagesAsRead] Checking messages for other user:', otherUserId);
     const unreadMessages = conversationMsgs.filter(
@@ -420,9 +423,14 @@ export default function MessagesPage() {
       try {
         const messageIds = unreadMessages.map(msg => msg.id);
         console.log('[markConversationMessagesAsRead] Calling service to mark as read:', messageIds);
-        const success = await messageService.markAsRead(messageIds);
+        
+        // Use the markMessageAsRead from NotificationContext instead of directly calling messageService
+        const success = await markMessageAsRead(messageIds);
+        
         if (success) {
           console.log('[markConversationMessagesAsRead] Service call successful. Updating local state.');
+          
+          // Update local state - the global count will be updated by the NotificationContext
           setMessages(prevMessages =>
             prevMessages.map(msg =>
               messageIds.includes(msg.id)
@@ -430,6 +438,7 @@ export default function MessagesPage() {
                 : msg
             )
           );
+          
           setConversationMessages(prevConvMessages =>
             prevConvMessages.map(msg =>
               messageIds.includes(msg.id)
@@ -437,14 +446,57 @@ export default function MessagesPage() {
                 : msg
             )
           );
+          
           console.log('[markConversationMessagesAsRead] Local state updated.');
-          // Title update will be handled by the dedicated useEffect watching `messages`
         }
       } catch (error) {
         console.error('Error marking messages as read:', error);
       }
     }
   };
+
+  // Listen for message events
+  useEffect(() => {
+    console.log('[MessagesPage] Setting up message event listeners');
+    
+    // Listen for new messages
+    const handleNewMessage = (message: any) => {
+      console.log('[MessagesPage] New message event received:', message);
+      // We'll let the realtime subscription handle this for now
+    };
+    
+    // Listen for messages marked as read
+    const handleMessageRead = (messageId: string) => {
+      console.log('[MessagesPage] Message read event received:', messageId);
+      // Update our local state
+      setMessages(prevMessages =>
+        prevMessages.map(msg =>
+          msg.id === messageId
+            ? { ...msg, isRead: true }
+            : msg
+        )
+      );
+      
+      // Also update conversation messages if they're loaded
+      setConversationMessages(prevConvMessages =>
+        prevConvMessages.map(msg =>
+          msg.id === messageId
+            ? { ...msg, isRead: true }
+            : msg
+        )
+      );
+    };
+    
+    // Set up listeners
+    messageEvents.on(MESSAGE_EVENTS.NEW_MESSAGE, handleNewMessage);
+    messageEvents.on(MESSAGE_EVENTS.MESSAGE_READ, handleMessageRead);
+    
+    // Clean up on unmount
+    return () => {
+      messageEvents.off(MESSAGE_EVENTS.NEW_MESSAGE, handleNewMessage);
+      messageEvents.off(MESSAGE_EVENTS.MESSAGE_READ, handleMessageRead);
+    };
+  }, []);
 
   // Load conversation messages (calls markConversationMessagesAsRead)
   const loadConversation = async (otherUser: DatabaseUser, currentMessages: Message[]) => {
@@ -545,7 +597,11 @@ export default function MessagesPage() {
   // Handle sending a reply in conversation view
   const handleSendReply = async (e: React.FormEvent) => {
     e.preventDefault()
+    await submitReplyAction();
+  };
 
+  // New function for the core sending logic (Reply)
+  const submitReplyAction = async () => {
     if (!currentUser || !selectedConversationUser || !replyContent.trim()) return
 
     setSendingMessage(true)
@@ -559,7 +615,6 @@ export default function MessagesPage() {
         : 'Re: Conversation'
 
       // Send the reply with any attachments
-      // IMPORTANT: Assuming messageService.sendMessage returns the sent message object or { id: string }
       const sentMessage = await messageService.sendMessage({
         recipientId: selectedConversationUser.id,
         subject,
@@ -571,12 +626,10 @@ export default function MessagesPage() {
       setReplyContent('')
       setReplyAttachments([])
 
-      // Use the handleMessageUpdate function to refresh all messages and conversation
-      // Pass the ID of the sent message for targeted logging and potential immediate update
       if (sentMessage && typeof sentMessage === 'object' && 'id' in sentMessage && typeof sentMessage.id === 'string') {
         await handleMessageUpdate(sentMessage.id);
       } else {
-        console.warn('[handleSendReply] sentMessage.id not available from messageService.sendMessage. Calling handleMessageUpdate without ID.');
+        console.warn('[submitReplyAction] sentMessage.id not available. Calling handleMessageUpdate without ID.');
         await handleMessageUpdate();
       }
 
@@ -586,12 +639,26 @@ export default function MessagesPage() {
     } finally {
       setSendingMessage(false)
     }
-  }
+  };
+
+  // New onKeyDown handler for reply textarea
+  const handleReplyKeyDown = async (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      if (!sendingMessage && replyContent.trim() && selectedConversationUser && currentUser) {
+          await submitReplyAction();
+      }
+    }
+  };
 
   // Handle sending a new message
   const handleSendNewMessage = async (e: React.FormEvent) => {
     e.preventDefault()
+    await submitNewMessageAction();
+  };
 
+  // New function for the core sending logic (New Message)
+  const submitNewMessageAction = async () => {
     if (!currentUser || !newMessage.recipientId || !newMessage.subject || !newMessage.content.trim()) {
       alert('Please fill out all fields')
       return
@@ -600,7 +667,6 @@ export default function MessagesPage() {
     setSendingMessage(true)
     try {
       // Send the message with attachments
-      // IMPORTANT: Assuming messageService.sendMessage returns the sent message object or { id: string }
       const sentMessage = await messageService.sendMessage({
         recipientId: newMessage.recipientId,
         subject: newMessage.subject,
@@ -619,12 +685,10 @@ export default function MessagesPage() {
       // Return to inbox view
       setShowNewMessageForm(false)
 
-      // Also refresh all messages
-      // Pass the ID of the sent message for targeted logging and potential immediate update
       if (sentMessage && typeof sentMessage === 'object' && 'id' in sentMessage && typeof sentMessage.id === 'string') {
         await handleMessageUpdate(sentMessage.id);
       } else {
-        console.warn('[handleSendNewMessage] sentMessage.id not available from messageService.sendMessage. Calling handleMessageUpdate without ID.');
+        console.warn('[submitNewMessageAction] sentMessage.id not available. Calling handleMessageUpdate without ID.');
         await handleMessageUpdate();
       }
       
@@ -636,45 +700,79 @@ export default function MessagesPage() {
     } finally {
       setSendingMessage(false)
     }
-  }
+  };
+
+  // New onKeyDown handler for new message textarea
+  const handleNewMessageKeyDown = async (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      if (!sendingMessage && newMessage.recipientId && newMessage.subject && newMessage.content.trim() && currentUser) {
+          await submitNewMessageAction();
+      }
+    }
+  };
 
   // Group messages by conversation (sender/recipient)
   const getConversations = (): { user: DatabaseUser, lastMessage: Message, unreadCount: number }[] => {
     const conversations: Record<string, { user: DatabaseUser, lastMessage: Message, unreadCount: number }> = {}
 
-    if (!currentUser) return []
+    if (!currentUser) {
+      console.log('[getConversations] No current user, returning empty array.');
+      return [];
+    }
+    if (messages.length === 0) {
+      console.log('[getConversations] No messages in state, returning empty array.');
+      return [];
+    }
 
-    // Group messages by the other person in the conversation
+    console.log(`[getConversations] Processing ${messages.length} messages for currentUser: ${currentUser.id}`);
+    const allUserIdsInState = users.map(u => u.id);
+    console.log(`[getConversations] 'users' state contains IDs: ${allUserIdsInState.join(', ') || 'EMPTY'}`);
+
+    let skippedMessagesCount = 0;
+
     messages.forEach(message => {
       const otherUserId = message.senderId === currentUser.id
         ? message.recipientId
-        : message.senderId
+        : message.senderId;
 
-      const otherUser = users.find(u => u.id === otherUserId)
-      if (!otherUser) return
+      const otherUser = users.find(u => u.id === otherUserId);
+
+      if (!otherUser) {
+        if (otherUserId && otherUserId !== currentUser.id) {
+             console.warn(`[getConversations] Message ID ${message.id} (subject: '${message.subject}', from ${message.senderId} to ${message.recipientId}): Other user ID '${otherUserId}' not found in the 'users' state. This message won't be part of any conversation in the inbox list.`);
+        } else if (!otherUserId) {
+            console.warn(`[getConversations] Message ID ${message.id} (subject: '${message.subject}', from ${message.senderId} to ${message.recipientId}): otherUserId is null or undefined. Skipping.`);
+        }
+        skippedMessagesCount++;
+        return; // Skip this message for conversation grouping
+      }
 
       if (!conversations[otherUserId]) {
         conversations[otherUserId] = {
           user: otherUser,
           lastMessage: message,
-          unreadCount: message.senderId === otherUserId && !message.isRead ? 1 : 0
-        }
+          unreadCount: (message.senderId === otherUserId && !message.isRead) ? 1 : 0
+        };
       } else {
-        // If this message is more recent, update last message
         if (new Date(message.createdAt) > new Date(conversations[otherUserId].lastMessage.createdAt)) {
-          conversations[otherUserId].lastMessage = message
+          conversations[otherUserId].lastMessage = message;
         }
-
-        // Increment unread count if from other user and not read
         if (message.senderId === otherUserId && !message.isRead) {
-          conversations[otherUserId].unreadCount++
+          conversations[otherUserId].unreadCount++;
         }
       }
-    })
+    });
+
+    if (skippedMessagesCount > 0) {
+        console.log(`[getConversations] Skipped ${skippedMessagesCount} out of ${messages.length} messages because the other user was not found in the 'users' state or otherUserId was invalid.`);
+    }
+    const conversationKeys = Object.keys(conversations);
+    console.log(`[getConversations] Successfully created ${conversationKeys.length} conversations for users: ${conversationKeys.join(', ') || 'NONE'}`);
 
     return Object.values(conversations).sort((a, b) =>
       new Date(b.lastMessage.createdAt).getTime() - new Date(a.lastMessage.createdAt).getTime()
-    )
+    );
   }
 
   // Get user initials for avatar fallback
@@ -796,6 +894,7 @@ export default function MessagesPage() {
                 value={newMessage.content}
                 onChange={(e) => setNewMessage({ ...newMessage, content: e.target.value })}
                 placeholder="Type your message here..."
+                onKeyDown={handleNewMessageKeyDown}
               />
             </div>
 
@@ -1057,6 +1156,7 @@ export default function MessagesPage() {
               onChange={(e) => setReplyContent(e.target.value)}
               placeholder="Type your reply..."
               className="min-h-12 resize-none"
+              onKeyDown={handleReplyKeyDown}
             />
 
             {/* File attachment button */}
@@ -1183,3 +1283,4 @@ export default function MessagesPage() {
     </div>
   )
 }
+

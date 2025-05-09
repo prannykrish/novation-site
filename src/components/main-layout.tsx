@@ -36,7 +36,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
-import { MessageNotificationListener } from "@/components/message-notification-listener"
+import { useNotifications } from '@/context/NotificationContext'
 
 // Main navigation items
 const mainNavItems = [
@@ -72,19 +72,13 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
   // State for current user
   const [currentUser, setCurrentUser] = React.useState<DatabaseUser | null>(null)
   
-  // State for unread messages count
-  const [unreadMessages, setUnreadMessages] = React.useState<number>(0)
+  // Get unread count from NotificationContext instead of local state
+  const { unreadCount: unreadMessages, refreshUnreadCount } = useNotifications();
   
-  // Fetch current user and unread messages on component mount
+  // Fetch current user on component mount
   React.useEffect(() => {
-    fetchCurrentUser()
-    fetchUnreadMessages()
-    
-    // Set up an interval to periodically check for new messages
-    const intervalId = setInterval(fetchUnreadMessages, 60000); // Check every minute
-    
-    return () => clearInterval(intervalId);
-  }, [])
+    fetchCurrentUser();
+  }, []);
   
   // Function to fetch the current user - can be called after profile updates
   const fetchCurrentUser = async () => {
@@ -95,17 +89,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
       console.error("Error fetching current user:", error)
     }
   }
-  
-  // Function to fetch unread messages count
-  const fetchUnreadMessages = async () => {
-    try {
-      const count = await messageService.getUnreadMessagesCount()
-      setUnreadMessages(count)
-    } catch (error) {
-      console.error("Error fetching unread messages:", error)
-    }
-  }
-  
+
   // Create a user object for NavUser component
   const userData = {
     user: {
@@ -129,8 +113,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
-      {/* Include the MessageNotificationListener component */}
-      <MessageNotificationListener />
+      {/* No longer need the MessageNotificationListener here since we're using the context */}
       
       <div className="flex h-screen w-full">
         {/* Main sidebar */}
@@ -217,7 +200,17 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                 </PopoverTrigger>
                 <PopoverContent className="w-80">
                   <div className="flex flex-col gap-2">
-                    <h3 className="font-semibold">Messages</h3>
+                    <div className="flex justify-between items-center">
+                      <h3 className="font-semibold">Messages</h3>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={refreshUnreadCount}
+                        className="h-8 w-8 p-0"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-refresh-cw"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+                      </Button>
+                    </div>
                     {unreadMessages > 0 ? (
                       <div>
                         <p className="text-sm">You have {unreadMessages} unread messages.</p>

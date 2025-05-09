@@ -6,6 +6,7 @@ import { messageService } from '@/lib/database'
 import { useRouter, usePathname } from 'next/navigation'
 import { toast } from 'sonner'
 import { RealtimeChannel } from '@supabase/supabase-js'
+import { useNotifications } from '@/context/NotificationContext'
 
 // Define proper message payload type
 type RealtimeMessagePayload = {
@@ -27,32 +28,12 @@ export function MessageNotificationListener() {
   const router = useRouter()
   const pathname = usePathname()
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
-  const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0)
+  
+  // Get notification context
+  const { refreshUnreadCount } = useNotifications()
   
   // Track if we're currently on the messages page
   const isOnMessagesPage = pathname?.startsWith('/dashboard/messages')
-  
-  useEffect(() => {
-    // If on messages page, title might be handled by the page itself or default
-    // If not on messages page, show count if > 0
-    if (unreadMessagesCount > 0) {
-      document.title = `(${unreadMessagesCount}) Messages | Shadcnmaxxing`
-    } else {
-      document.title = 'Shadcnmaxxing'
-    }
-  }, [unreadMessagesCount, isOnMessagesPage, pathname])
-  
-  // Function to fetch and update unread messages count state
-  const fetchAndUpdateUnreadCount = async () => {
-    if (!currentUserId) return; // Ensure userId is available
-    try {
-      const count = await messageService.getUnreadMessagesCount()
-      setUnreadMessagesCount(count)
-    } catch (error) {
-      console.error('Error fetching unread messages count:', error)
-      setUnreadMessagesCount(0); // Fallback to 0 on error
-    }
-  }
   
   useEffect(() => {
     // Get current user ID and set up notification listeners
@@ -70,14 +51,7 @@ export function MessageNotificationListener() {
         const userId = session.user.id
         setCurrentUserId(userId)
         
-        // Fetch initial unread count
-        if (userId) { // Check if userId is truthy before fetching
-            // Call the new function to fetch and update state
-            const initialCount = await messageService.getUnreadMessagesCount();
-            setUnreadMessagesCount(initialCount);
-        }
-        
-        // Create channel for real-time message notifications
+        // Create channel for real-time message notifications (only for INSERT)
         const channel: RealtimeChannel = supabase
           .channel('global-message-notifications')
           .on(
@@ -90,7 +64,6 @@ export function MessageNotificationListener() {
             },
             async (payload: RealtimeMessagePayload) => {
               const senderId = payload.new.sender_id
-              const messageId = payload.new.id
               
               try {
                 // Get current URL parameters to check if we're already viewing this conversation
@@ -99,8 +72,6 @@ export function MessageNotificationListener() {
                 
                 // Skip notifications if we're already in the conversation with this sender
                 if (isOnMessagesPage && conversationUserId === senderId) {
-                  // Auto-mark as read since we're in the conversation
-                  await messageService.markAsRead(messageId)
                   return
                 }
                 
@@ -111,8 +82,8 @@ export function MessageNotificationListener() {
                   console.log('Audio play prevented by browser policy', e)
                 })
                 
-                // Get unread count - NOW UPDATES STATE, not just title
-                await fetchAndUpdateUnreadCount(); // Update state, which triggers title update effect
+                // Refresh unread count via NotificationContext
+                refreshUnreadCount()
                 
                 // Get sender information for a better notification
                 let senderName = 'Someone'
@@ -139,9 +110,6 @@ export function MessageNotificationListener() {
                     onClick: () => router.push(`/dashboard/messages?user=${senderId}`)
                   },
                   duration: 8000, // Show for longer
-                  onDismiss: () => {
-                    // Optional: mark as read when toast is dismissed
-                  }
                 })
                 
                 // Show browser notification if permitted
@@ -171,29 +139,7 @@ export function MessageNotificationListener() {
             }
           })
           
-        // Listen for messages being marked as read
-        const readChannel: RealtimeChannel = supabase
-          .channel('read-status-updates')
-          .on(
-            'postgres_changes' as any,
-            {
-              event: 'UPDATE',
-              schema: 'public',
-              table: 'messages',
-              filter: `recipient_id=eq.${userId} AND is_read=eq.true`
-            },
-            async () => {
-              // Update the unread count in the document title - NOW UPDATES STATE
-              try {
-                await fetchAndUpdateUnreadCount(); // Update state, which triggers title update effect
-              } catch (error) {
-                console.error('Error updating unread count:', error)
-              }
-            }
-          )
-          .subscribe()
-          
-        console.log('Global message notification listener setup complete')
+        console.log('Message notification listener setup complete')
         
         // Request notification permission on component mount
         if ('Notification' in window && Notification.permission !== 'denied') {
@@ -203,7 +149,6 @@ export function MessageNotificationListener() {
         // Clean up on unmount
         return () => {
           supabase.removeChannel(channel)
-          supabase.removeChannel(readChannel)
         }
       } catch (error) {
         console.error('Error setting up message notification listener:', error)
@@ -211,7 +156,7 @@ export function MessageNotificationListener() {
     }
     
     setupListener()
-  }, [router])
+  }, [router, isOnMessagesPage, pathname, refreshUnreadCount])
   
   // This is a headless component that doesn't render anything
   return null
