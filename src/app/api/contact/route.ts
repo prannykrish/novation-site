@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as Brevo from '@getbrevo/brevo';
 
-const brevoApiKey = process.env.BREVO_API_KEY;
+// const brevoApiKey = process.env.BREVO_API_KEY;
+const brevoApiKey = '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';
 const senderEmail = process.env.SENDER_EMAIL;
 const recipientEmail = process.env.RECIPIENT_EMAIL;
 
