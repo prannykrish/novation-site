@@ -102,20 +102,20 @@ export default function HeroSection() {
     const productImagesData = [
         {
             id: 1,
-            lightSrc: "/images/lightproduct.png",
-            darkSrc: "/images/darkproduct.png",
+            lightSrc: "/images/lightasset.png",
+            darkSrc: "/images/darkasset.png",
             alt: "App screen 1",
         },
         {
             id: 2,
-            lightSrc: "/images/lightproduct.png",
-            darkSrc: "/images/darkproduct.png",
+            lightSrc: "/images/lightlookup.png",
+            darkSrc: "/images/darklookup.png",
             alt: "App screen 2",
         },
         {
             id: 3,
-            lightSrc: "/images/lightproduct.png",
-            darkSrc: "/images/darkproduct.png",
+            lightSrc: "/images/lightmess.png",
+            darkSrc: "/images/darkmess.png",
             alt: "App screen 3",
         },
     ];
