@@ -2,8 +2,6 @@
 
 import { HeroHeader } from "@/components/nav-bar";
 import FooterSection from "@/components/footer";
-import Features1 from "@/misc_components/features-1";
-import Features12 from "@/misc_components/features-12";
 import { motion } from "framer-motion";
 import Pricing from "@/misc_components/pricing";
 import CallToAction from "@/components/call-to-action";

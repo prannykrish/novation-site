@@ -2,7 +2,6 @@
 
 import BrokenSystem from "@/components/brokensystem";
 import FooterSection from "@/components/footer";
-//import LawStatisticsSection from "@/components/lawstatistics";
 import { HeroHeader } from "@/components/nav-bar";
 import MissionVisionSection from "@/components/missionvision";
 
