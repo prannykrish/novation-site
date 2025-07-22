@@ -7,7 +7,7 @@ import { messageService } from "@/lib/database"
 import { Message } from "@/types/database"
 import { getSupabase } from "@/lib/supabase"
 import type { RealtimeChannel } from "@supabase/supabase-js"
-import { NavUser } from "./nav-user"
+import { NavUser } from "../components/nav-user"
 import {
   Sidebar,
   SidebarContent,

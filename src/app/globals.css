@@ -1,5 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
+
+
 
 @custom-variant dark (&:is(.dark *));
 
@@ -132,6 +135,153 @@
     background-position: 0% 50%;
   }
 }
+
+
+
+/* Add these keyframes to your global CSS file for smooth infinite scrolling */
+
+@keyframes infinite-scroll-left {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes infinite-scroll-right {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+/* Prevent autofill from turning inputs white */
+input:-webkit-autofill,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:focus {
+  background-color: #140101 !important;
+  -webkit-box-shadow: 0 0 0px 1000px #140101 inset !important;
+  -webkit-text-fill-color: #f8e4b6 !important;
+  color: #f8e4b6 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+
+/* Infinite scroll left */
+.infinite-scroll-left {
+  animation: infinite-scroll-left 30s linear infinite;
+}
+
+/* Infinite scroll right */
+.infinite-scroll-right {
+  animation: infinite-scroll-right 30s linear infinite;
+}
+
+.shimmer-layer {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.05) 25%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.05) 75%
+  );
+  background-size: 400% 400%;
+  animation: shimmerBackground 10s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes shimmerBackground {
+  0% {
+    background-position: 0% 50%;
+    opacity: 0.1;
+  }
+  50% {
+    background-position: 100% 50%;
+    opacity: 0.2;
+  }
+  100% {
+    background-position: 0% 50%;
+    opacity: 0.1;
+  }
+}
+
+@keyframes scan {
+  0% { transform: translateY(0); opacity: 0; }
+  10% { opacity: 1; }
+  100% { transform: translateY(100vh); opacity: 0; }
+}
+
+.animate-scan {
+  animation: scan 5s linear infinite;
+}
+
+@keyframes pingy {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  40% {
+    transform: translateY(-18px) scale(1.1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+.animate-pingy {
+  animation: pingy 1.5s ease-in-out;
+}
+
+/* Noise texture */
+.noise-bg {
+  background-image: url('https://grainy-gradients.vercel.app/noise.svg');
+  background-size: cover;
+  mix-blend-mode: overlay;
+  animation: pulseNoise 8s ease-in-out infinite alternate;
+}
+
+@keyframes pulseNoise {
+  from {
+    opacity: 0.05;
+  }
+  to {
+    opacity: 0.15;
+  }
+}
+
+/* Subtle animated grid overlay */
+.bg-grid {
+  background-image: linear-gradient(
+      rgba(255, 255, 255, 0.05) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to right,
+      rgba(255, 255, 255, 0.05) 1px,
+      transparent 1px
+    );
+  background-size: 40px 40px;
+  animation: gridShift 60s linear infinite;
+}
+
+@keyframes gridShift {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 1000px 1000px;
+  }
+}
+
+
+
+
 
 .rainbow-text {
   background: linear-gradient(

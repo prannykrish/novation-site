@@ -1,9 +1,9 @@
 "use client";
 
-import { HeroHeader } from "@/components/hero5-header";
+import { HeroHeader } from "@/components/nav-bar";
 import FooterSection from "@/components/footer";
 import { motion } from "framer-motion";;
-import FAQs from "@/components/faqs";
+import FAQs from "@/components/contactuspage";
 export default function Home() {
   // Container animation settings
   const containerVariants = {

@@ -13,7 +13,7 @@ export default function Pricing() {
                 </div>
 
                 <div className="mt-8 grid gap-6 md:mt-20 md:grid-cols-3">
-                    <Card>
+                    {/* <Card>
                         <CardHeader>
                             <CardTitle className="font-medium">Free</CardTitle>
 
@@ -66,7 +66,7 @@ export default function Pricing() {
                                 ))}
                             </ul>
                         </CardContent>
-                    </Card>
+                    </Card> */}
 
                     <Card className="flex flex-col">
                         <CardHeader>

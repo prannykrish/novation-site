@@ -1,11 +1,11 @@
 "use client";
 
-import { HeroHeader } from "@/components/hero5-header";
+import { HeroHeader } from "@/components/nav-bar";
 import FooterSection from "@/components/footer";
-import Features1 from "@/components/features-1";
-import Features12 from "@/components/features-12";
+import Features1 from "@/misc_components/features-1";
+import Features12 from "@/misc_components/features-12";
 import { motion } from "framer-motion";
-import Features4 from "@/components/features-4";
+import Features4 from "@/misc_components/features-4";
 import CallToAction from "@/components/call-to-action";
 export default function Home() {
   // Container animation settings
