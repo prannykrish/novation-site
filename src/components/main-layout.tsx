@@ -3,7 +3,7 @@ import { Logo } from './logo'
 import * as React from "react"
 import { Database, FileText, MessageSquare, Plus, Bell } from "lucide-react"
 import { usePathname, useRouter } from "next/navigation"
-import { ThemeToggle } from "@/components/theme-toggle"
+//import { ThemeToggle } from "@/components/theme-toggle"
 import {
   Sidebar,
   SidebarContent,
@@ -228,7 +228,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
                   </div>
                 </PopoverContent>
               </Popover>
-              <ThemeToggle />
+              {/* <ThemeToggle /> */}
             </div>
           </header>
           <main className="flex-1 overflow-auto w-full">{children}</main>

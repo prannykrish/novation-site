@@ -4,7 +4,7 @@ import { HeroHeader } from "@/components/nav-bar";
 import FooterSection from "@/components/footer";
 import Features1 from "@/misc_components/features-1";
 import Features12 from "@/misc_components/features-12";
-import Team from "@/components/team";
+//import Team from "@/components/team";
 import { motion } from "framer-motion";
 import ContentSection  from "@/misc_components/content-5";
 import CommunitySection  from "@/misc_components/content-6";
@@ -48,7 +48,7 @@ export default function Home() {
       </motion.div>
       
       <motion.div variants={itemVariants}>
-        <Team/>
+        {/* <Team/> */}
       </motion.div>
       {/* <motion.div variants={itemVariants}>
         <CommunitySection/>
