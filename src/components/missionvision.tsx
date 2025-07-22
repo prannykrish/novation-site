@@ -75,7 +75,6 @@ export default function MissionVisionSection() {
         </motion.p>
 
         {/* Manifesto Grid */}
-        {/* Manifesto Grid */}
 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
   {[
     {
@@ -161,25 +160,6 @@ export default function MissionVisionSection() {
     ))}
   </div>
 </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
                     ) : i === 1 ? (
                      <div className="grid grid-cols-5 grid-rows-5 gap-2 p-4 rounded-2xl h-[200px] w-full">

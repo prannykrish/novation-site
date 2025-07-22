@@ -35,19 +35,23 @@ export default function CallToAction() {
         </p>
 
         <div className="mt-12 flex flex-wrap justify-center gap-4">
-          {/* CTA Buttons */}
-          <button className="relative bg-[#2b0d0d] hover:bg-[#3d1212] text-[#f8e4b6] px-6 py-3 rounded-xl font-serif font-medium border border-[#b8634c]/30 shadow-md transition-all duration-300 overflow-hidden cursor-pointer">
-  {/* Internal Shine */}
-  <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.12),transparent_60%)] pointer-events-none" />
+  {/* CTA Button 1 */}
+  <Link href="/contactus">
+    <button className="relative bg-[#2b0d0d] hover:bg-[#3d1212] text-[#f8e4b6] px-6 py-3 rounded-xl font-serif font-medium border border-[#b8634c]/30 shadow-md transition-all duration-300 overflow-hidden cursor-pointer">
+      {/* Internal Shine */}
+      <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.12),transparent_60%)] pointer-events-none" />
+      {/* Button Text */}
+      <span className="relative z-10">Experience the Future →</span>
+    </button>
+  </Link>
 
-  {/* Button Text */}
-  <span className="relative z-10">Experience the Future →</span>
-</button>
-
-          <button className="border border-[#b8634c]/30 hover:border-[#b8634c]/60 hover:bg-[#1a0000] font-serif text-[#f8e4b6] px-6 py-3 rounded-xl font-medium transition-all duration-300 cursor-pointer">
-            <Link href="/help">Contact Us</Link>
-          </button>
-        </div>
+  {/* CTA Button 2 */}
+  <Link href="/features">
+    <button className="border border-[#b8634c]/30 hover:border-[#b8634c]/60 hover:bg-[#1a0000] font-serif text-[#f8e4b6] px-6 py-3 rounded-xl font-medium transition-all duration-300 cursor-pointer">
+      Learn More
+    </button>
+  </Link>
+</div>
       </motion.div>
     </section>
   )
