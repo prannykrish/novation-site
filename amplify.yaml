@@ -3,15 +3,16 @@ frontend:
   phases:
     preBuild:
       commands:
-        - npx pnpm install
+        - npm install -g pnpm
+        - pnpm install
     build:
       commands:
-        - npx pnpm run build
+        - pnpm build
+        - pnpm export
   artifacts:
-    baseDirectory: .next
+    baseDirectory: out
     files:
       - '**/*'
   cache:
     paths:
       - node_modules/**/*
-      - .pnpm-store/**/*
