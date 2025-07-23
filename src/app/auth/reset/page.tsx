@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react'
 import { Metadata } from 'next'
-import ResetPasswordForm from './reset-password-form'
+//import ResetPasswordForm from './reset-password-form'
 
 export const metadata: Metadata = {
   title: 'Reset Password',
@@ -29,7 +29,7 @@ export default function ResetPasswordPage() {
           </p>
         </div>
         <Suspense fallback={<ResetFormSkeleton />}>
-          <ResetPasswordForm />
+          {/* <ResetPasswordForm /> */}
         </Suspense>
       </div>
     </div>

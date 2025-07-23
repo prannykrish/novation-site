@@ -7,7 +7,6 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { AlertCircle, X, Eye, EyeOff } from "lucide-react"
 
 export function LoginForm({
@@ -24,30 +23,20 @@ export function LoginForm({
   const [showResetForm, setShowResetForm] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  
-  // Use the proper client component client
-  const supabase = createClientComponentClient();
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    
+
     try {
-      // Sign in with Supabase
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      console.log('Session:', data);
-      if (error) throw error;
-      
-      // Force a revalidation of the route
+      // TODO: Replace with your new sign-in logic
+      console.log('Signing in with', email, password);
       router.refresh();
       router.push('/dashboard');
     } catch (err: any) {
       console.error('Login error:', err);
-      setError(err.message);
+      setError(err.message || 'Login failed');
     } finally {
       setLoading(false);
     }
@@ -57,18 +46,14 @@ export function LoginForm({
     e.preventDefault();
     setResetLoading(true);
     setError(null);
-    
+
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: `https://www.novationapp.com/auth/callback?type=recovery`,
-      });
-      
-      if (error) throw error;
-      
+      // TODO: Replace with your password reset logic
+      console.log('Reset password for:', resetEmail);
       setResetEmailSent(true);
     } catch (err: any) {
       console.error('Password reset error:', err);
-      setError(err.message);
+      setError(err.message || 'Reset failed');
     } finally {
       setResetLoading(false);
     }
@@ -76,24 +61,10 @@ export function LoginForm({
 
   const handleGoogleSignIn = async () => {
     try {
-      // Log the redirect URL for debugging
-      const redirectUrl = `https://www.novationapp.com/auth/callback`;
-      console.log(`Google Sign-in - Redirect URL: ${redirectUrl}, Origin: ${window.location.origin}`);
-      
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: redirectUrl,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          }
-        }
-      });
-      
-      if (error) throw error;
+      // TODO: Replace with Google sign-in logic
+      console.log('Google sign-in triggered');
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'Google sign-in failed');
     }
   };
 

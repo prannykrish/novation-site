@@ -1,4 +1,4 @@
-import { SignUpForm } from "@/misc_components/signup-form"
+import  SignUpForm  from "@/misc_components/signup-form"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"

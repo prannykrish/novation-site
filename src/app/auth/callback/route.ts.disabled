@@ -1,0 +1,31 @@
+import { cookies } from 'next/headers'
+import { NextRequest, NextResponse } from 'next/server'
+
+//export const dynamic = 'force-dynamic'
+
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url)
+  const code = searchParams.get('code')
+  const type = searchParams.get('type')
+
+  // Get the proper base URL - consider X-Forwarded-Host for proxies
+  const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || ''
+  const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http'
+
+  // Use NEXT_PUBLIC_URL if available (recommended approach)
+  const baseUrl = process.env.NEXT_PUBLIC_URL || `${protocol}://${host}`
+  console.log(`Auth callback triggered. Base URL: ${baseUrl}, Type: ${type}`)
+
+  // Handle password recovery flow
+  if (code && type === 'recovery') {
+    return NextResponse.redirect(`${baseUrl}/auth/reset?type=recovery`)
+  }
+
+  // Handle email verification flow
+  if (code && (type === 'email_verification' || type === 'signup')) {
+    return NextResponse.redirect(`${baseUrl}/auth/verify?type=${type}`)
+  }
+
+  // Default fallback
+  return NextResponse.redirect(`${baseUrl}/dashboard`)
+}

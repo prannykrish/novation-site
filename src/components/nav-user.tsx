@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import React, { useState } from "react"
 import { LogOut, User } from "lucide-react"
@@ -11,7 +11,6 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar"
-import { supabase } from "@/lib/supabase"
 import {
   Dialog,
   DialogContent,
@@ -23,7 +22,6 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { userService } from "@/lib/database"
 
 // Helper function to get initials from the user's name
 const getInitials = (name: string | undefined): string => {
@@ -52,18 +50,14 @@ export function NavUser({
   const [isUpdating, setIsUpdating] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
 
-  // Logout handler using Supabase's authentication method
+  // Placeholder logout
   const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut()
-    if (error) {
-      console.error("Error logging out:", error.message)
-    } else {
-      console.log("Logged out successfully")
-      window.location.href = "/signin"
-    }
+    alert("Logout is disabled (auth under construction).")
+    // Simulate sign-out if needed
+    window.location.href = "/signin"
   }
 
-  // Handle updating user profile
+  // Placeholder profile update
   const handleUpdateProfile = async () => {
     if (!newName.trim()) {
       setErrorMessage("Name cannot be empty")
@@ -74,25 +68,14 @@ export function NavUser({
     setErrorMessage("")
 
     try {
-      // Get current user
-      const currentUser = await userService.getCurrentUser()
-      if (!currentUser?.id) {
-        throw new Error("User not found")
-      }
+      // Simulate a save
+      console.log("Updated name:", newName)
 
-      // Update the user's name
-      await supabase
-        .from('users')
-        .update({ name: newName.trim() })
-        .eq('id', currentUser.id)
-
-      // Close dialog and refresh user data if callback provided
       setShowEditProfile(false)
-      
+
       if (onProfileUpdate) {
         onProfileUpdate()
       } else {
-        // Force refresh to show changes
         window.location.reload()
       }
     } catch (error) {

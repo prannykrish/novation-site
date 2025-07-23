@@ -1,43 +1,24 @@
 // src/components/auth-provider.tsx
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
-import { User } from '@supabase/supabase-js'
+import { createContext, useContext, useState } from 'react'
 
 type AuthContextType = {
-  user: User | null
+  user: null
   loading: boolean
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
-  loading: true,
+  loading: false,
 })
 
 export const useAuth = () => useContext(AuthContext)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const initAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      setUser(session?.user || null)
-      
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        (_, session) => {
-          setUser(session?.user || null)
-        }
-      )
-      
-      setLoading(false)
-      return () => subscription.unsubscribe()
-    }
-    
-    initAuth()
-  }, [])
+  // Since Supabase is removed, default to user=null and loading=false
+  const [user] = useState<null>(null)
+  const [loading] = useState(false)
 
   return (
     <AuthContext.Provider value={{ user, loading }}>
