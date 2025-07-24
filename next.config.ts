@@ -1,8 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export', // ✅ static export
-
-  swcMinify: false, // ✅ prevent memory spikes from aggressive minification
+  output: 'export',
 
   images: {
     remotePatterns: [
@@ -18,7 +16,6 @@ const nextConfig = {
   },
 
   typescript: {
-    // ✅ disable type-checking to reduce memory usage in Amplify
     ignoreBuildErrors: true,
   },
 }

@@ -30,7 +30,7 @@ export default function PlatformSimplifies() {
 
       <div className="relative z-10 max-w-6xl mx-auto px-4 text-center">
         <h2 className="text-4xl md:text-5xl font-serif text-[#f8e4b6] mb-4">
-          Kill the Complexity.
+          Eliminate the Complexity.
         </h2>
         <p className="text-lg md:text-xl text-[#cbbfa9] font-serif mb-16">
           Leverage the Law.
