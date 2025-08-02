@@ -72,7 +72,7 @@ export default function FAQs() {
           <div className="flex flex-col justify-center text-[#e0d4c1] space-y-10">
             <div>
               <h3 className="text-xl font-semibold text-[#f8e4b6]">Email</h3>
-              <p className="mt-2 text-sm">info@novationapp.com</p>
+              <p className="mt-2 text-sm">hello@novationapp.com</p>
             </div>
             <div>
               <h3 className="text-xl font-semibold text-[#f8e4b6]">Phone</h3>
