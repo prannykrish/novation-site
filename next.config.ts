@@ -16,7 +16,10 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-}
 
+  experimental: {
+    outputFileTracing: false, 
+  },
+}
 
 module.exports = nextConfig
