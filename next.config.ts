@@ -1,7 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
-
   images: {
     remotePatterns: [
       {
@@ -19,5 +17,6 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 }
+
 
 module.exports = nextConfig
