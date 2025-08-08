@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'export',
+  productionBrowserSourceMaps: false,
+  
   images: {
     remotePatterns: [
       {
@@ -9,7 +12,6 @@ const nextConfig = {
     ],
   },
 
-  productionBrowserSourceMaps: false,
 
   eslint: {
     ignoreDuringBuilds: true,

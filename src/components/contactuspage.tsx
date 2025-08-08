@@ -31,10 +31,11 @@ export default function FAQs() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/contact', {
+      const response = await fetch('https://formspree.io/f/xrblowdk', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: JSON.stringify(formData),
       });
@@ -97,9 +98,9 @@ export default function FAQs() {
 
             {success && (
               <div className="bg-[#140101] border border-[#b8634c]/30 text-[#f8e4b6] p-4 rounded-md mb-4 shadow-[0_0_30px_rgba(185,58,82,0.12)]">
-  <h3 className="text-md font-semibold mb-1 text-[#f6d8a8]">Message Sent!</h3>
-  <p className="text-sm font-light text-[#e0d4c1]">Thank you for contacting us. We’ll get back to you shortly.</p>
-</div>
+                <h3 className="text-md font-semibold mb-1 text-[#f6d8a8]">Message Sent!</h3>
+                <p className="text-sm font-light text-[#e0d4c1]">Thank you for contacting us. We’ll get back to you shortly.</p>
+              </div>
 
             )}
 
