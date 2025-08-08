@@ -1,20 +1,19 @@
 version: 1
+
 frontend:
   phases:
     preBuild:
       commands:
-        - npm install -g pnpm
-        - corepack enable
+        - npm install -g pnpm           
+        - corepack enable              
         - pnpm install --frozen-lockfile
-        - export NODE_OPTIONS=--max_old_space_size=4096
     build:
       commands:
-        - pnpm run build
+        - pnpm run build               
   artifacts:
-    baseDirectory: .next
+    baseDirectory: out                 
     files:
       - '**/*'
   cache:
     paths:
-      - .next/cache/**/*
       - node_modules/**/*
