@@ -76,12 +76,12 @@ export default function InfiniteUseCases() {
                     .slice(rowIndex * (useCaseWords.length / 2), (rowIndex + 1) * (useCaseWords.length / 2))
                     .map((word, i) => (
                       <motion.div
-  key={`${rowIndex}-${i}`}
-  whileHover={{ scale: 1.05 }}
-  className="use-case-tag px-4 py-2 rounded-full text-sm
-             bg-white/5 border font-serif border-[#d6b37e]/20 text-[#f6e6c1]
-             hover:bg-white/10 hover:border-[#d6b37e]/40
-             backdrop-blur-sm whitespace-nowrap transition-shadow duration-300"
+                        key={`${rowIndex}-${i}`}
+                        whileHover={{ scale: 1.05 }}
+                        className="use-case-tag px-4 py-2 rounded-full text-sm
+                                  bg-white/5 border font-serif border-[#d6b37e]/20 text-[#f6e6c1]
+                                  hover:bg-white/10 hover:border-[#d6b37e]/40
+                                  backdrop-blur-sm whitespace-nowrap transition-shadow duration-300"
                       >
                         {word}
                       </motion.div>

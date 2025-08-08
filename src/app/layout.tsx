@@ -1,12 +1,6 @@
-
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import ClientProviders from "@/components/client-providers"; // will handle all client logic
-
-
-
-//<script src="https://cdn.jsdelivr.net/gh/PavelDoGreat/WebGL-Fluid-Simulation/dist/fluid.min.js" defer></script>
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,9 +28,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className="dark">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <ClientProviders>{children}</ClientProviders>
+        {children}
       </body>
     </html>
   );
 }
-

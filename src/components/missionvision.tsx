@@ -75,43 +75,43 @@ export default function MissionVisionSection() {
         </motion.p>
 
         {/* Manifesto Grid */}
-<div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
-  {[
-    {
-      icon: Settings,
-      title: 'System Replaced.',
-      subtext: "We’re not fixing the system. We're replacing it entirely.",
-    },
-    {
-      icon: Layers,
-      title: 'One Law Engine.',
-      subtext: 'One centralized system. All processes. Every environment.',
-    },
-    {
-      icon: Eye,
-      title: 'Law, Redefined.',
-      subtext: 'Not law as it stands - law built for a dynamic world.',
-    },
-  ].map((item, i) => (
-    <Tilt tiltMaxAngleX={6} tiltMaxAngleY={6} key={i} className="w-full">
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, delay: 0.1 * i }}
-        viewport={{ once: true }}
-        className="relative bg-white/5 backdrop-blur-md border border-[#b93a52]/20 shadow-[0_0_60px_rgba(185,58,82,0.12)] rounded-3xl hover:brightness-110 p-6 flex flex-col text-center items-center w-full transition duration-300"
-      >
-        <div className="flex items-center gap-2 mb-2">
-          <div className="bg-[#2a0000] p-2 rounded-xl border border-[#8b0000]">
-            <item.icon className="w-6 h-6 text-[#f8e4b6]" />
-          </div>
-          <h3 className="text-lg font-serif text-[#f8e4b6]">{item.title}</h3>
-        </div>
-        <p className="text-[#cbbfa9] text-sm font-light font-serif">{item.subtext}</p>
-      </motion.div>
-    </Tilt>
-  ))}
-</div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
+        {[
+          {
+            icon: Settings,
+            title: 'System Replaced.',
+            subtext: "We’re not fixing the system. We're replacing it entirely.",
+          },
+          {
+            icon: Layers,
+            title: 'One Law Engine.',
+            subtext: 'One centralized system. All processes. Every environment.',
+          },
+          {
+            icon: Eye,
+            title: 'Law, Redefined.',
+            subtext: 'Not law as it stands - law built for a dynamic world.',
+          },
+        ].map((item, i) => (
+          <Tilt tiltMaxAngleX={6} tiltMaxAngleY={6} key={i} className="w-full">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.1 * i }}
+              viewport={{ once: true }}
+              className="relative bg-white/5 backdrop-blur-md border border-[#b93a52]/20 shadow-[0_0_60px_rgba(185,58,82,0.12)] rounded-3xl hover:brightness-110 p-6 flex flex-col text-center items-center w-full transition duration-300"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <div className="bg-[#2a0000] p-2 rounded-xl border border-[#8b0000]">
+                  <item.icon className="w-6 h-6 text-[#f8e4b6]" />
+                </div>
+                <h3 className="text-lg font-serif text-[#f8e4b6]">{item.title}</h3>
+              </div>
+              <p className="text-[#cbbfa9] text-sm font-light font-serif">{item.subtext}</p>
+            </motion.div>
+          </Tilt>
+        ))}
+      </div>
 
 
 
@@ -139,44 +139,41 @@ export default function MissionVisionSection() {
                   >
                     {i === 0 ? (
                      <div className="w-full h-full rounded-3xl px-6 py-6 flex items-center justify-center">
-  <div className="flex flex-col gap-2">
-    {[...Array(5)].map((_, row) => (
-      <div key={row} className="flex gap-8">
-        {[...Array(9)].map((_, idx) => (
-          <motion.div
-            key={idx}
-            className="w-4 h-4 rounded-full bg-[#f8e4b6]/20"
-            animate={{ opacity: [0.2, 1, 0.2] }}
-            transition={{
-              duration: 2,
-              delay: idx * 0.15 + row * 0.07,
-              repeat: Infinity,
-              repeatType: 'loop',
-              ease: 'easeInOut',
-            }}
-          />
-        ))}
-      </div>
-    ))}
-  </div>
-</div>
+                        <div className="flex flex-col gap-2">
+                          {[...Array(5)].map((_, row) => (
+                            <div key={row} className="flex gap-8">
+                              {[...Array(9)].map((_, idx) => (
+                                <motion.div
+                                  key={idx}
+                                  className="w-4 h-4 rounded-full bg-[#f8e4b6]/20"
+                                  animate={{ opacity: [0.2, 1, 0.2] }}
+                                  transition={{
+                                    duration: 2,
+                                    delay: idx * 0.15 + row * 0.07,
+                                    repeat: Infinity,
+                                    repeatType: 'loop',
+                                    ease: 'easeInOut',
+                                  }}
+                                />
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
 
                     ) : i === 1 ? (
                      <div className="grid grid-cols-5 grid-rows-5 gap-2 p-4 rounded-2xl h-[200px] w-full">
-  {Array.from({ length: 25 }).map((_, idx) => (
-    <div
-      key={idx}
-      className="w-full h-full rounded bg-[#f8e4b6]/20 animate-pulse"
-      style={{
-        animationDelay: `${(idx % 5) * 0.2}s`,
-        animationDuration: `${1 + (idx % 3)}s`,
-      }}
-    />
-  ))}
-</div>
-
-
-
+                        {Array.from({ length: 25 }).map((_, idx) => (
+                          <div
+                            key={idx}
+                            className="w-full h-full rounded bg-[#f8e4b6]/20 animate-pulse"
+                            style={{
+                              animationDelay: `${(idx % 5) * 0.2}s`,
+                              animationDuration: `${1 + (idx % 3)}s`,
+                            }}
+                          />
+                        ))}
+                      </div>
 
                     ) : (
                       <div className="w-full h-full flex flex-col justify-center items-center space-y-4 py-6">

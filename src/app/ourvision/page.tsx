@@ -12,13 +12,9 @@ export default function OurVision() {
     <>
       <HeroHeader />
       <BrokenSystem/>
-      <WhyBroken/>
-    
+      <WhyBroken/>  
       <MissionVisionSection/>
-      <FooterSection/>
-   
-      
-      
+      <FooterSection/>      
     </>
   );
 }

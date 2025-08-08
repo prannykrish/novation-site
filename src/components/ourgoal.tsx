@@ -39,33 +39,32 @@ export default function OurGoal() {
           description: 'We’re expanding to every legal system, process, and use case - building the smart legal systems of the future.'
         }].map((card, idx) => (
           <Tilt
-  key={idx}
-  tiltMaxAngleX={8}
-  tiltMaxAngleY={8}
-  glareEnable={false}
-  glareMaxOpacity={0.05}
-  glareColor="#ffffff"
-  glarePosition="all"
-  className="w-full rounded-xl"
->
-  <motion.div
-    initial={{ opacity: 0, y: 40 }}
-    whileInView={{ opacity: 1, y: 0 }}
-    transition={{ delay: 0.1 * (idx + 1), duration: 0.7 }}
-    viewport={{ once: true }}
-    whileHover={{scale: 1 }}
-    className="relative bg-white/5 backdrop-blur-md border border-[#b93a52]/20 shadow-[0_0_60px_rgba(185,58,82,0.12)] rounded-3xl hover:brightness-110 p-6 flex flex-col items-center text-center w-full transition duration-300"
-  >
-    <div className="flex items-center gap-2 mb-2">
-      <div className="bg-[#2a0000] p-2 rounded-xl border border-[#8b0000]">
-        <card.icon className="w-6 h-6 text-[#f8e4b6]" />
-      </div>
-      <h3 className="text-lg font-serif text-[#f8e4b6]">{card.title}</h3>
-    </div>
-    <p className="text-[#cbbfa9] text-sm mb-4 font-light font-serif">{card.description}</p>
-  </motion.div>
-</Tilt>
-
+            key={idx}
+            tiltMaxAngleX={8}
+            tiltMaxAngleY={8}
+            glareEnable={false}
+            glareMaxOpacity={0.05}
+            glareColor="#ffffff"
+            glarePosition="all"
+            className="w-full rounded-xl"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 * (idx + 1), duration: 0.7 }}
+              viewport={{ once: true }}
+              whileHover={{scale: 1 }}
+              className="relative bg-white/5 backdrop-blur-md border border-[#b93a52]/20 shadow-[0_0_60px_rgba(185,58,82,0.12)] rounded-3xl hover:brightness-110 p-6 flex flex-col items-center text-center w-full transition duration-300"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <div className="bg-[#2a0000] p-2 rounded-xl border border-[#8b0000]">
+                  <card.icon className="w-6 h-6 text-[#f8e4b6]" />
+                </div>
+                <h3 className="text-lg font-serif text-[#f8e4b6]">{card.title}</h3>
+              </div>
+              <p className="text-[#cbbfa9] text-sm mb-4 font-light font-serif">{card.description}</p>
+            </motion.div>
+          </Tilt>
         ))}
       </div>
     </section>
