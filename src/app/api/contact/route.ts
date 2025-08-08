@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 
+export const runtime = 'edge'
+
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function POST(req: NextRequest) {
@@ -17,26 +19,26 @@ export async function POST(req: NextRequest) {
       to: 'hello@novationapp.com',
       subject: `New Contact Form: ${subject}`,
       text: `
-New submission:
+        New submission:
 
-Reason: ${reason}
-Preferred Contact: ${preferredContact}
-Contact Info: ${contactInfo}
-Subject: ${subject}
+        Reason: ${reason}
+        Preferred Contact: ${preferredContact}
+        Contact Info: ${contactInfo}
+        Subject: ${subject}
 
-Message:
-${message}
-      `,
-    })
+        Message:
+        ${message}
+              `,
+            })
 
-    if (error) {
-      console.error(error)
-      return NextResponse.json({ error: 'Failed to send email' }, { status: 500 })
-    }
+            if (error) {
+              console.error(error)
+              return NextResponse.json({ error: 'Failed to send email' }, { status: 500 })
+            }
 
-    return NextResponse.json({ success: true })
-  } catch (err) {
-    console.error(err)
-    return NextResponse.json({ error: 'Server error' }, { status: 500 })
-  }
+            return NextResponse.json({ success: true })
+          } catch (err) {
+            console.error(err)
+            return NextResponse.json({ error: 'Server error' }, { status: 500 })
+          }
 }
