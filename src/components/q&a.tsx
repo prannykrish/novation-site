@@ -37,7 +37,7 @@ export default function FAQsTwo() {
     {
       id: 'item-6',
       question: 'How can I be an early partner or beta tester?',
-      answer: <>For interests in partnerships or testing, please email <span className="font-bold">info@novationapp.com</span>.</>,
+      answer: <>For interests in partnerships or testing, please email <span className="font-bold">hello@novationapp.com</span>.</>,
     },
   ]
 
@@ -57,7 +57,7 @@ export default function FAQsTwo() {
             <p className="text-sm font-serif text-[#d9d9d9]">
               Can’t find the answers you were looking for? <br />
               Reach out to us at{' '}
-              <span className="text-[#a84242] font-medium">info@novationapp.com</span>
+              <span className="text-[#a84242] font-medium">hello@novationapp.com</span>
             </p>
           </div>
 
