@@ -90,7 +90,7 @@ export default function LaunchSection() {
       </div>
       <h3 className="text-2xl font-serif text-[#f4c089] mb-2">Novation: Infinite</h3>
       <p className="text-[#d6bfa1] text-sm mb-6 font-light font-serif">
-        The first AI-native legal operating system.
+        ???
       </p>
 
       <div className="group relative h-10">
