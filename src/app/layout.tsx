@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   title: "Novation",
   description: "AI Legal Infrastructure",
   icons: {
-    icon: "/novation-logo.svg",
+    icon: "/vercel.svg",
   },
 };
 
