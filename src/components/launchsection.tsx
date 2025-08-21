@@ -100,7 +100,7 @@ export default function LaunchSection() {
           ??? {/* Replace with real CTA */}
         </button>
         <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 absolute top-2 left-0 right-0 text-sm text-[#b39b80] italic z-0">
-          Not yet. Soon enough.
+          Coming in the Future.
         </div>
       </div>
 
