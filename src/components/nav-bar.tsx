@@ -39,7 +39,7 @@ export const HeroHeader = () => {
           'mx-auto mt-2 max-w-6xl px-6 transition-all duration-300 lg:px-12',
           isScrolled && 'bg-background/30 max-w-4xl rounded-4xl border backdrop-blur-lg lg:px-5'
         )}>
-          <div className="relative flex flex-wrap items-center justify-between gap-6 py-3 lg:gap-0 lg:py-4">
+          <div className="relative flex flex-wrap items-center justify-between gap-6 py-1.5 lg:gap-0 lg:py-2">
             {/* LEFT SIDE - Logo */}
             <motion.div
               initial={navAnimated ? { x: '-50%', opacity: 0 } : false}
@@ -50,7 +50,7 @@ export const HeroHeader = () => {
               <Link href="/" aria-label="home" className="flex items-center space-x-2">
                 <Logo />
               </Link>
-              <div className="flex items-center gap-2 lg:hidden">
+              <div className="flex items-center space-x-2 h-14">
                 <button
                   onClick={() => setMenuState(!menuState)}
                   aria-label={menuState ? 'Close Menu' : 'Open Menu'}

@@ -2,8 +2,9 @@
 const nextConfig = {
   output: 'export',
   productionBrowserSourceMaps: false,
-  
+
   images: {
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',
