@@ -13,10 +13,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Novation AI",
-  description: "AI trademark risk assessment and analysis",
+  title: "Novation",
+  description: "AI Legal Infrastructure",
   icons: {
-    icon: "/vercel.svg",
+    icon: "/novation-logo.svg",
   },
 };
 
