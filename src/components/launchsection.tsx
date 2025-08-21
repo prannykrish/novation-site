@@ -42,7 +42,7 @@ export default function LaunchSection() {
     The future of intellectual property analysis, research, and registration.
   </p>
   <button className="bg-[#47261d] text-[#f3dcc0] border border-[#a45e49]/40 px-4 py-2 rounded-md font-medium hover:bg-[#5a2d23] transition">
-    Contact Us
+    Coming Soon
   </button>
   <ul className="mt-6 text-left text-[#ddc8b0] space-y-2 text-sm font-serif">
     <li>- Global IP search & registration</li>
@@ -67,7 +67,7 @@ export default function LaunchSection() {
                   Redefining what it means to interpret every aspect of the law.
                 </p>
                 <button className="bg-[#3b0f12] text-[#f8e4b6] border border-[#b93a52]/30 px-4 py-2 rounded-md font-medium hover:opacity-90 transition">
-                  Join Waitlist
+                  In Development
                 </button>
                 <ul className="mt-6 text-left text-[#cbbfa9] space-y-2 text-sm font-serif">
                   <li>- Dynamic policy simulation</li>
