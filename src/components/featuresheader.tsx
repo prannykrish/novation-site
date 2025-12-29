@@ -1,85 +1,41 @@
 'use client'
 
-import { Bot, Cpu, ShieldCheck, Eye } from 'lucide-react'
+import React from 'react'
 import { motion } from 'framer-motion'
-import Tilt from 'react-parallax-tilt'
 
-export default function FeaturesSection() {
+export default function FeaturesHeader() {
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-[#130102] via-[#22060e] to-[#180103] text-white min-h-screen flex flex-col justify-center py-28 px-6 sm:px-12">
-      {/* Heading */}
-      <div className="max-w-5xl mx-auto text-center mb-20">
-        <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1, duration: 0.8 }}
-          className="text-5xl md:text-6xl font-serif text-[#f8e4b6]"
-        >
-          Legal Intelligence Begins Here.
-        </motion.h1>
+    <section className="relative overflow-hidden bg-[#2A000A] text-white">
+      {/* Velvet ambience */}
+      <div className="pointer-events-none absolute inset-0 -z-20 bg-gradient-to-b from-[#1A0006] via-[#0B0002] to-[#1A0006] opacity-95" />
+      <div className="pointer-events-none absolute -top-44 left-1/2 -translate-x-1/2 w-[1150px] h-[1150px] bg-gradient-radial from-[#3a0a0a] via-[#230000] to-transparent opacity-35 blur-[190px] -z-10" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[#DDB982]/10" />
 
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.8 }}
-          className="text-[#cbbfa9] text-lg mt-6 max-w-2xl mx-auto font-serif"
-        >
-          We’re reengineering legal efficiency - starting with our AI Trademark Analyst to transform how trademarks are analyzed, understood, and processed.
-        </motion.p>
-      </div>
-
-      {/* Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
-        {features.map((feature, idx) => (
-          <Tilt
-            key={idx}
-            tiltMaxAngleX={10}
-            tiltMaxAngleY={10}
-            glareEnable={false}
-            glareMaxOpacity={0.05}
-            className="w-full"
+      <div className="mx-auto max-w-7xl px-6 lg:px-10">
+        {/* Spacing from navbar: adjust this if your navbar is taller */}
+        <div className="pt-28 md:pt-32 pb-16 md:pb-20">
+          {/* Page title */}
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+            className="max-w-3xl"
           >
-            <motion.div
-  initial={{ opacity: 0, y: 30 }}
-  whileInView={{ opacity: 1, y: 0 }}
-  transition={{ delay: 0.5 + idx * 0.2, duration: 0.6 }}
-  viewport={{ once: true }}
-  whileHover={{ scale: 1 }}
-  className="relative p-6 rounded-3xl bg-[#240305] border border-[#b93a52]/30 text-center shadow-[0_0_40px_#5c0a17]/10 transition-all duration-300 hover:brightness-110"
->
+            <p className="text-xs tracking-[0.18em] uppercase text-[#D2A679] font-sans">
+              Features
+            </p>
 
-              <div className="mb-4 p-3 rounded-xl bg-[#2a0000] border border-[#8b0000] inline-block shadow-md">
-                <div className="text-[#f8e4b6]">{feature.icon}</div>
-              </div>
-              <h3 className="text-lg font-serif text-[#f8e4b6] mb-2">{feature.title}</h3>
-              <p className="text-[#cbbfa9] text-sm font-light font-serif">{feature.description}</p>
-            </motion.div>
-          </Tilt>
-        ))}
+            <h1 className="mt-4 font-serif text-5xl md:text-6xl leading-[1.02] text-[#F0D9A8] drop-shadow-[0_2px_0_rgba(0,0,0,0.55)]">
+              Built for real trademark work.
+            </h1>
+
+            <p className="mt-6 text-[17px] leading-7 text-[#E0D1B6] font-sans max-w-[68ch]">
+              Novation&apos;s inital features focus on turning analysis preparation into a simple process that maximizes judgment effectiveness.
+            </p>
+          </motion.div>
+        </div>
       </div>
     </section>
   )
 }
-
-const features = [
-  {
-    icon: <Bot className="w-5 h-5" />,
-    title: 'Natural Language.',
-    description: 'Speak in natural language, and Novation will understand you and your intent.',
-  },
-  {
-    icon: <Cpu className="w-5 h-5" />,
-    title: 'Lightning-Fast Analysis.',
-    description: 'Processes millions of data points across the world to detect legal risks in seconds.',
-  },
-  {
-    icon: <ShieldCheck className="w-5 h-5" />,
-    title: 'Smart Legal Reasoning.',
-    description: 'Explains every decision with transparent legal logic and real references.',
-  },
-  {
-    icon: <Eye className="w-5 h-5" />,
-    title: 'Ongoing Monitoring.',
-    description: 'Keeps track of your trademarks 24/7 and alerts you of potential conflicts.',
-  },
-]

@@ -1,109 +1,130 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { MessageCircle, Search, BarChart3, Zap } from 'lucide-react'
-import Tilt from 'react-parallax-tilt'
-import Particles from 'react-tsparticles'
-import { loadSlim } from 'tsparticles-slim'
-import { Engine } from 'tsparticles-engine'
+
+type Tile = {
+  image: string
+  title: string
+  subtitle: string
+  overlay?: string // <- ONLY knob
+}
 
 export default function PlatformSimplifies() {
-  const [hasAnimated, setHasAnimated] = useState(false)
-
-  const particlesInit = useCallback(async (engine: Engine) => {
-    await loadSlim(engine)
-  }, [])
-
-  useEffect(() => {
-    const alreadyAnimated = sessionStorage.getItem('simplifiesAnimated')
-    if (!alreadyAnimated) {
-      setHasAnimated(true)
-      sessionStorage.setItem('simplifiesAnimated', 'true')
-    }
-  }, [])
+  const tiles: Tile[] = [
+    {
+      image: '/images/redreflection.jpg',
+      title: 'Defensible by Design',
+      subtitle:
+        'Evidence-first knockouts based on real context, not random calculated numbers.',
+      overlay: 'bg-[#120006]/90',
+    },
+    {
+      image: '/images/redlinetexture.jpg',
+      title: 'Simplicity at Heart',
+      subtitle:
+        'A system built to make knockouts smarter while eliminating manual searching.',
+      overlay: 'bg-[#120006]/90',
+    },
+    {
+      image: '/images/redcircles.jpg',
+      title: 'Built for Judgment',
+      subtitle:
+        'Designed to pre-process analysis to maximize judgement, not replace decisions.',
+      overlay: 'bg-[#120006]/90',
+    },
+  ]
 
   return (
-    <section className="relative py-28 overflow-hidden bg-gradient-to-br from-[#140102] via-[#200104] to-[#2e0d11] text-white">
-      {/* Ambient Velvet Glow */}
-      <div className="absolute -top-48 left-1/2 -translate-x-1/2 w-[900px] h-[900px] bg-gradient-radial from-[#8B0000] to-transparent opacity-25 blur-3xl -z-10" />
+    <section className="bg-[#2A000A] text-white">
+      <motion.div
+        initial={{ opacity: 0, y: 18 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        viewport={{ once: true }}
+        className="mx-auto max-w-7xl px-6 lg:px-10 py-28"
+      >
+        {/* Top row: heading + CTA */}
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-8">
+          <div className="max-w-2xl">
+            <p className="text-xs tracking-[0.18em] uppercase text-[#D2A679] font-sans">
+              Perks
+            </p>
 
-      <div className="relative z-10 max-w-6xl mx-auto px-4 text-center">
-        <h2 className="text-4xl md:text-5xl font-serif text-[#f8e4b6] mb-4">
-          Eliminate the Complexity.
-        </h2>
-        <p className="text-lg md:text-xl text-[#cbbfa9] font-serif mb-16">
-          Leverage the Law.
-        </p>
+            <h2 className="mt-3 font-serif text-5xl leading-[1.05] tracking-tight text-[#F0D9A8]">
+              Do less, get more.
+            </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-          <BenefitCard
-            title="Flexible Searching."
-            description="Forget forms - describe your idea in plain language and get complete legal context immediately."
-            icon={<Search className="w-6 h-6 text-[#f8e4b6]" />}
-            tags={['Natural Input', 'Text-to-Search', 'Fast Context']}
-          />
-          <BenefitCard
-            title="Instant Analysis."
-            description="Novation compares millions of records and gives you a dynamic legal report in seconds."
-            icon={<BarChart3 className="w-6 h-6 text-[#f8e4b6]" />}
-            tags={['Real-Time', 'Risk Analysis', 'Live Assessment']}
-          />
-          <BenefitCard
-            title="Full Transparency."
-            description="See how every decision is made - from AI explanation to links to actual statutes and more."
-            icon={<MessageCircle className="w-6 h-6 text-[#f8e4b6]" />}
-            tags={['Explainable AI', 'Legal Sources', 'Cited Law']}
-          />
-          <BenefitCard
-            title="Constant Improvement."
-            description="Novation gets smarter with every use - and eventually will expand to every type of legal use case."
-            icon={<Zap className="w-6 h-6 text-[#f8e4b6]" />}
-            tags={['Auto-Learning', 'Legal Expansion', 'AI Ecosystem']}
-          />
+            <p className="mt-5 text-[17px] leading-7 text-[#E0D1B6] font-sans">
+              Novation gives law firms the ability to perform deeper, faster
+              clearance with evidence and reasoning that hold up under scrutiny.
+            </p>
+          </div>
+
+          <Link
+            href="/usecases"
+            className="
+              md:mt-1 shrink-0 inline-flex items-center justify-center
+              rounded-2xl px-6 py-2.5 text-[15px] font-medium font-sans
+              bg-[#F0D9A8] text-[#2A000A]
+              hover:bg-[#F0D9A8] transition
+              shadow-[0_10px_30px_rgba(0,0,0,0.35)]
+            "
+          >
+            See Use Cases
+          </Link>
         </div>
-      </div>
+
+        {/* Cards row */}
+        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-10">
+          {tiles.map((t) => (
+            <NovationTile
+              key={t.title}
+              image={t.image}
+              title={t.title}
+              subtitle={t.subtitle}
+              overlay={t.overlay}
+            />
+          ))}
+        </div>
+      </motion.div>
     </section>
   )
 }
 
-type BenefitCardProps = {
+function NovationTile({
+  image,
+  title,
+  subtitle,
+  overlay,
+}: {
+  image: string
   title: string
-  description: string
-  icon: React.ReactNode
-  tags: string[]
-}
-
-function BenefitCard({ title, description, icon, tags }: BenefitCardProps) {
+  subtitle: string
+  overlay?: string
+}) {
   return (
-    <Tilt tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={false} glareMaxOpacity={0.05}>
-      <motion.div
-        whileHover={{scale: 1 }}
-        transition={{ type: 'spring', stiffness: 250, damping: 20 }}
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        className="bg-white/5 backdrop-blur-md border border-[#b93a52]/30 hover:brightness-110 rounded-3xl p-6 flex flex-col items-center text-center w-full hover:shadow-2xl transition duration-300"
-      >
-        <div className="flex items-center gap-2 mb-2">
-          <div className="bg-[#240305] p-2 rounded-xl shadow-md border border-[#8b0000]">
-            {icon}
-          </div>
-          <h3 className="text-lg font-serif text-[#f8e4b6]">{title}</h3>
-        </div>
-        <p className="text-[#cbbfa9] text-sm mb-4 font-light font-serif">{description}</p>
+    <div className="relative overflow-hidden rounded-2xl h-[360px] shadow-[0_18px_60px_rgba(0,0,0,0.35)]">
+      {/* Background image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: `url(${image})` }}
+      />
 
-        <div className="flex justify-center gap-2 flex-wrap">
-          {tags.map((tag, i) => (
-            <span
-              key={i}
-              className="text-xs px-3 py-1 bg-[#3b0f12] text-[#f8e4b6] border border-[#b93a52]/40 rounded-full hover:opacity-90 transition font-serif"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      </motion.div>
-    </Tilt>
+      {/* ONLY knob: overlay */}
+      <div className={['absolute inset-0', overlay ?? 'bg-[#120006]/60'].join(' ')} />
+
+      {/* Light, even vignette (no heavy bottom) */}
+
+      {/* Optional faint highlight (keep or delete) */}
+
+      {/* Content */}
+      <div className="relative z-10 h-full flex flex-col justify-end px-8 pb-8">
+        <h3 className="text-xl font-serif text-[#F0D9A8]">{title}</h3>
+        <p className="mt-3 text-[14px] leading-6 text-[#E0D1B6] font-sans max-w-[90%]">
+          {subtitle}
+        </p>
+      </div>
+    </div>
   )
 }

@@ -3,17 +3,24 @@
 
 import { HeroHeader } from "@/components/nav-bar";
 import FooterSection from "@/components/footer";
-import HowItWorksPage from "@/components/howitworks";
+import HowItWorksPage from "@/components/featuressimilarity";
 import HowItWorksHeader from "@/components/featuresheader";
-import WhyThisMatters from "@/components/builtforsimplicity";
+import SpeedSection from "@/components/speedofsearch";
+import EvidenceSection from "@/components/evidencebased";
+import RoadmapSection from "@/components/fullroadmap";
+import FeatureNaturalLanguage from "@/components/featuresnaturallanguage";
 
 
 export default function HowItWorks() {
   return (
     <><HeroHeader/>
     <HowItWorksHeader/>
+        <FeatureNaturalLanguage/>
+
     <HowItWorksPage/>
-    <WhyThisMatters/>
+    <SpeedSection/>
+    <EvidenceSection/>
+    <RoadmapSection/>
     <FooterSection/>
     </>
 

@@ -42,7 +42,7 @@ export default function FAQsTwo() {
   ]
 
   return (
-    <section className="relative py-24 md:py-36 text-white overflow-hidden bg-gradient-to-b from-[#1a0000] via-black to-[#1a0000]">
+    <section className="relative py-24 md:py-36 text-white overflow-hidden bg-[#2A000A]">
       {/* Glow Overlay */}
       <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[700px] h-[700px] bg-gradient-radial from-[#8B0000] to-transparent opacity-30 blur-3xl -z-10" />
         <div className="mx-auto max-w-6xl px-4 md:px-6 flex flex-col md:flex-row gap-12">

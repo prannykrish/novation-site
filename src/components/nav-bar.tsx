@@ -9,7 +9,11 @@ import { motion } from 'framer-motion'
 
 const menuItems = [
   { name: 'Features', href: '/features' },
-  { name: 'Our Vision', href: '/ourvision' }
+  { name: 'Use Cases', href: '/usecases' },
+  { name: 'Resources', href: '/resources' },
+  // { name: 'Vision', href: '/ourvision' },
+
+
 ]
 
 export const HeroHeader = () => {
@@ -77,7 +81,7 @@ export const HeroHeader = () => {
                       <Link
                         href={item.href}
                         className={cn(
-                          "text-muted-foreground hover:text-accent-foreground block duration-150 font-serif",
+                          "text-muted-foreground hover:text-accent-foreground block duration-150 text-[#E0D1B6] font-sans",
                           isActive && "text-[#f8e4b6]"
                         )}
                       >
@@ -124,12 +128,19 @@ export const HeroHeader = () => {
                 whileTap={{ scale: 0.97 }}
                 className="transition-transform duration-200"
               >
-                <Link
-                  href="/contactus"
-                  className="bg-[#2b0d0d] hover:bg-[#3d1212] text-[#f8e4b6] px-4 py-2.5 text-[14px] rounded-lg font-serif font-medium border border-[#b8634c]/30 shadow-md transition-all duration-300"
+                <Link href="/contactus">
+                <button
+                  className="
+                    inline-flex items-center pointer-events-none justify-center
+                    rounded-2xl px-6 py-2.5 text-sm font-medium font-sans
+                    bg-[#F0D9A8] text-[#2A000A]
+                    hover:bg-[#F0D9A8] transition
+                    shadow-[0_12px_30px_rgba(0,0,0,0.35)]
+                  "
                 >
-                  Contact Us
-                </Link>
+                  Get Started
+                </button>
+              </Link>
               </motion.div>
             </motion.div>
           </div>
